@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Stage 0 — Foundation завершён.** Подготовлен воспроизводимый технический каркас без доменных экранов и реальных управленческих данных:
+**Stage 1 — People & Projects завершён.** Поверх технического каркаса реализованы первые доменные справочники:
 
 - frontend на React/TypeScript;
 - Node.js/Fastify API с `/health/live`, `/health/ready` и `/api/meta`;
@@ -14,14 +14,19 @@
 - Docker Compose и Caddy для production-like запуска;
 - проверка типов, lint, unit-тесты и deployment build;
 - опубликованная тестовая версия: https://management-log.raman-birulia.chatgpt.site/.
+- создание, редактирование, архивация и восстановление людей и проектов;
+- case-insensitive aliases и slugs для будущих `@people` и `#projects`;
+- серверная D1-база опубликованной Sites-версии и SQLite migration.
 
-Следующий продуктовый этап — **Stage 1: справочники людей и проектов**.
+Следующий продуктовый этап — **Stage 2: MVP composer и единый журнал**.
 
 ## Документация
 
 - [Навигация по документации](docs/README.md)
 - [Product Vision V1](docs/management_log_product_vision_v1.docx)
 - [Отчёт о Stage 0](docs/stage-0-foundation.md)
+- [Отчёт о Stage 1](docs/stage-1-people-projects.md)
+- [ADR-001: D1 для Sites runtime](docs/decisions/001-sites-d1-runtime.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.
 

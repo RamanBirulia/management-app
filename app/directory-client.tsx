@@ -1,0 +1,114 @@
+"use client";
+
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import type { Person, Project } from "./directory-domain";
+
+type Tab = "people" | "projects";
+type EditableRecord = Person | Project;
+
+async function api<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, { ...init, headers: { "content-type": "application/json", ...init?.headers } });
+  const data = (await response.json()) as T & { error?: string };
+  if (!response.ok) throw new Error(data.error ?? "Не удалось выполнить запрос");
+  return data;
+}
+
+export default function DirectoryClient() {
+  const [tab, setTab] = useState<Tab>("people");
+  const [people, setPeople] = useState<Person[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<EditableRecord | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const suffix = includeArchived ? "?includeArchived=true" : "";
+      const [peopleResult, projectResult] = await Promise.all([
+        api<{ people: Person[] }>(`/api/people${suffix}`), api<{ projects: Project[] }>(`/api/projects${suffix}`),
+      ]);
+      setPeople(peopleResult.people); setProjects(projectResult.projects);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Не удалось загрузить справочники");
+    } finally { setLoading(false); }
+  }, [includeArchived]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => { void load(); });
+    return () => window.cancelAnimationFrame(frame);
+  }, [load]);
+  const records = tab === "people" ? people : projects;
+  const activeCount = useMemo(() => records.filter((item) => item.status === "active").length, [records]);
+
+  async function saveNew(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); setError(null);
+    try {
+      if (tab === "people") await api("/api/people", { method: "POST", body: JSON.stringify({ displayName: data.get("name"), alias: data.get("handle") }) });
+      else await api("/api/projects", { method: "POST", body: JSON.stringify({ name: data.get("name"), slug: data.get("handle") }) });
+      form.reset(); await load();
+    } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить"); }
+  }
+
+  async function saveEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!editing) return; const data = new FormData(event.currentTarget);
+    const kind = "displayName" in editing ? "people" : "projects";
+    const payload = kind === "people" ? { displayName: data.get("name"), alias: data.get("handle") } : { name: data.get("name"), slug: data.get("handle") };
+    try { await api(`/api/${kind}/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) }); setEditing(null); await load(); }
+    catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить изменения"); }
+  }
+
+  async function changeStatus(record: EditableRecord) {
+    const kind = "displayName" in record ? "people" : "projects";
+    const nextStatus = record.status === "active" ? "archived" : "active";
+    if (nextStatus === "archived" && !window.confirm("Архивировать запись? Старые ссылки останутся читаемыми.")) return;
+    try { await api(`/api/${kind}/${record.id}`, { method: "PATCH", body: JSON.stringify({ status: nextStatus }) }); await load(); }
+    catch (statusError) { setError(statusError instanceof Error ? statusError.message : "Не удалось изменить статус"); }
+  }
+
+  return <>
+    <section className="directory-toolbar" aria-label="Переключатель справочников">
+      <div className="tabs" role="tablist">
+        <button className={tab === "people" ? "tab active" : "tab"} onClick={() => { setTab("people"); setEditing(null); }} role="tab" aria-selected={tab === "people"}>Люди <span>{people.length}</span></button>
+        <button className={tab === "projects" ? "tab active" : "tab"} onClick={() => { setTab("projects"); setEditing(null); }} role="tab" aria-selected={tab === "projects"}>Проекты <span>{projects.length}</span></button>
+      </div>
+      <label className="archive-toggle"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> Показывать архив</label>
+    </section>
+
+    <section className="directory-layout">
+      <div className="records-panel">
+        <div className="panel-heading"><div><p className="eyebrow">{tab === "people" ? "People" : "Projects"}</p><h2>{tab === "people" ? "Справочник людей" : "Справочник проектов"}</h2></div><span className="counter">{activeCount} активных</span></div>
+        {error && <div className="error-banner" role="alert">{error}<button onClick={() => setError(null)} aria-label="Закрыть">×</button></div>}
+        {loading ? <div className="state-card">Загружаем записи…</div> : records.length === 0 ? <div className="state-card"><strong>{tab === "people" ? "Добавьте первого человека" : "Добавьте первый проект"}</strong><p>Стабильный идентификатор будет использоваться в будущих упоминаниях.</p></div> : <div className="record-list">
+          {records.map((record) => { const isPerson = "displayName" in record; const name = isPerson ? record.displayName : record.name; const handle = isPerson ? `@${record.alias}` : `#${record.slug}`; return <article className={`record-card ${record.status}`} key={record.id}>
+            <div className="record-avatar" aria-hidden="true">{name.slice(0, 2).toUpperCase()}</div>
+            <div className="record-main"><div className="record-title"><strong>{name}</strong>{record.status === "archived" && <span className="archived-label">архив</span>}</div><span className="handle">{handle}</span></div>
+            <div className="record-actions"><button onClick={() => setEditing(record)}>Изменить</button><button onClick={() => void changeStatus(record)}>{record.status === "active" ? "В архив" : "Вернуть"}</button></div>
+          </article>; })}
+        </div>}
+      </div>
+
+      <aside className="form-panel">
+        <p className="eyebrow">Новая запись</p><h2>{tab === "people" ? "Добавить человека" : "Добавить проект"}</h2>
+        <p className="form-intro">{tab === "people" ? "Alias будет использоваться после знака @." : "Slug будет использоваться после знака #."}</p>
+        <form onSubmit={saveNew}>
+          <label>{tab === "people" ? "Отображаемое имя" : "Название проекта"}<input name="name" required maxLength={100} placeholder={tab === "people" ? "Alex Morgan" : "Approvals"} /></label>
+          <label>{tab === "people" ? "Alias" : "Slug"}<div className="prefixed-input"><span>{tab === "people" ? "@" : "#"}</span><input name="handle" required minLength={2} maxLength={40} pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,39}" placeholder={tab === "people" ? "alex" : "approvals"} /></div></label>
+          <button className="primary-button" type="submit">Добавить</button>
+        </form>
+        <div className="form-note"><strong>Стабильные связи</strong><p>Переименование не изменяет внутренний ID и не сломает будущие записи журнала.</p></div>
+      </aside>
+    </section>
+
+    {editing && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditing(null); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+      <div className="modal-heading"><div><p className="eyebrow">Редактирование</p><h2 id="edit-title">{"displayName" in editing ? editing.displayName : editing.name}</h2></div><button className="close-button" onClick={() => setEditing(null)} aria-label="Закрыть">×</button></div>
+      <form onSubmit={saveEdit}>
+        <label>{"displayName" in editing ? "Отображаемое имя" : "Название проекта"}<input name="name" required defaultValue={"displayName" in editing ? editing.displayName : editing.name} /></label>
+        <label>{"displayName" in editing ? "Alias" : "Slug"}<div className="prefixed-input"><span>{"displayName" in editing ? "@" : "#"}</span><input name="handle" required pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,39}" defaultValue={"displayName" in editing ? editing.alias : editing.slug} /></div></label>
+        <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditing(null)}>Отмена</button><button className="primary-button" type="submit">Сохранить</button></div>
+      </form>
+    </section></div>}
+  </>;
+}
