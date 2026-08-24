@@ -13,6 +13,7 @@
 - Composer с выбором Decision / Task / Question.
 - Дата и время события с текущим временем по умолчанию.
 - `@people` и `#projects` autocomplete с клавиатурной навигацией.
+- Неизвестный валидный `@alias` или `#slug`, введённый прямо в текст, автоматически создаёт активную сущность в справочнике и структурированную связь.
 - Структурированные связи с immutable IDs людей и проектов.
 - Для Task: status, assignee и due date.
 - Для Question: open/resolved status.
@@ -41,6 +42,7 @@
 - Task status: unassigned/open/done/cancelled.
 - Question status: open/resolved.
 - Связи записываются как IDs, а не восстанавливаются из текста при чтении.
+- Для автоматически созданной сущности alias/slug временно используется как display name; его можно уточнить в справочнике позже.
 - Hard delete удаляет запись и её relation/source rows только после подтверждения.
 
 ## Проверено
@@ -50,6 +52,8 @@
 - Task с assignee, due date, сменой статуса и source-ссылкой.
 - Question create/delete.
 - Редактирование пересоздаёт структурированные связи и сохраняет основной ID.
+- Unknown mentions автоматически создаются и сразу возвращаются как relations записи.
+- Карточки журнала уплотнены: действия находятся в меню `⋯`, source-ссылки компактны, а отметка обновления показывается только после изменения.
 - Validation, typecheck, lint, API tests и deployment build.
 
 ## Не входит

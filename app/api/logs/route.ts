@@ -2,6 +2,7 @@ import { ensureDirectorySchema, getDirectoryDb } from "../../../db/directory";
 import type { LogPayload } from "../../log-domain";
 import { validateLogPayload } from "../../log-domain";
 import { getLogById, hydrateLogs } from "./log-storage";
+import { resolveMentionIds } from "./mention-resolution";
 
 export async function GET(request: Request) {
   const db = getDirectoryDb(); await ensureDirectorySchema(db);
@@ -24,11 +25,12 @@ export async function POST(request: Request) {
   const status = type === "task" ? (payload.status ?? "unassigned") : type === "question" ? (payload.status ?? "open") : null;
   const assigneeId = type === "task" ? (payload.assigneeId ?? null) : null;
   const dueDate = type === "task" ? (payload.dueDate ?? null) : null;
+  const mentionIds = await resolveMentionIds(db, content, payload.personIds, payload.projectIds);
   const statements = [db.prepare(`INSERT INTO log_entries
     (id, type, content, occurred_at, status, assignee_id, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)`)
     .bind(id, type, content, occurredAt, status, assigneeId, dueDate)];
-  for (const personId of [...new Set(payload.personIds ?? [])]) statements.push(db.prepare("INSERT INTO log_people (log_id, person_id) VALUES (?, ?)").bind(id, personId));
-  for (const projectId of [...new Set(payload.projectIds ?? [])]) statements.push(db.prepare("INSERT INTO log_projects (log_id, project_id) VALUES (?, ?)").bind(id, projectId));
+  for (const personId of mentionIds.personIds) statements.push(db.prepare("INSERT INTO log_people (log_id, person_id) VALUES (?, ?)").bind(id, personId));
+  for (const projectId of mentionIds.projectIds) statements.push(db.prepare("INSERT INTO log_projects (log_id, project_id) VALUES (?, ?)").bind(id, projectId));
   for (const source of payload.sources ?? []) statements.push(db.prepare("INSERT INTO sources (id, log_id, label, url) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), id, source.label.trim(), source.url.trim()));
   await db.batch(statements);
   return Response.json({ entry: await getLogById(db, id) }, { status: 201 });

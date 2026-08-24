@@ -29,6 +29,7 @@ export default function LogsClient() {
   const [content, setContent] = useState(""); const [occurredAt, setOccurredAt] = useState(localDateTime());
   const [status, setStatus] = useState("open"); const [assigneeId, setAssigneeId] = useState(""); const [dueDate, setDueDate] = useState("");
   const [sources, setSources] = useState<SourceDraft[]>([]); const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [menuId, setMenuId] = useState<string | null>(null);
 
   const load = useCallback(async (nextPage = 1, append = false) => {
     setLoading(true); setError(null);
@@ -93,6 +94,7 @@ export default function LogsClient() {
   }
 
   function edit(entry: LogEntry) {
+    setMenuId(null);
     setEditingId(entry.id); setType(entry.type); setContent(entry.content); setOccurredAt(localDateTime(new Date(entry.occurredAt)));
     setStatus(entry.status ?? (entry.type === "task" ? "unassigned" : "open")); setAssigneeId(entry.assigneeId ?? ""); setDueDate(entry.dueDate ?? "");
     setSources(entry.sources.map((source) => ({ ...source, key: source.id ?? crypto.randomUUID() })));
@@ -100,6 +102,7 @@ export default function LogsClient() {
   }
 
   async function remove(entry: LogEntry) {
+    setMenuId(null);
     if (!window.confirm("Удалить запись? Она исчезнет из всех будущих представлений.")) return;
     try { await api(`/api/logs/${entry.id}`, { method: "DELETE" }); await load(); }
     catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Не удалось удалить запись"); }
@@ -123,12 +126,13 @@ export default function LogsClient() {
 
     <section className="journal-section"><div className="journal-heading"><div><p className="eyebrow">All logs</p><h2>Обратная хронология</h2></div><span className="counter">{entries.length} записей</span></div>
       {loading && entries.length === 0 ? <div className="state-card">Загружаем журнал…</div> : entries.length === 0 ? <div className="state-card"><strong>Журнал пока пуст</strong><p>Создайте первую Decision, Task или Question — запись останется доступной после перезагрузки.</p></div> : <div className="log-list">{entries.map((entry) => <article className={`log-card ${entry.type}`} key={entry.id}>
-        <div className="log-meta"><span className={`type-pill ${entry.type}`}>{typeLabel(entry.type)}</span><time>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Tallinn" }).format(new Date(entry.occurredAt))}</time>{entry.status && <span className="log-status">{entry.status}</span>}</div>
+        <div className="log-meta"><span className={`type-pill ${entry.type}`}>{typeLabel(entry.type)}</span><time>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Tallinn" }).format(new Date(entry.occurredAt))}</time>{entry.updatedAt !== entry.createdAt && <span className="updated-mark" title={`Изменено ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${entry.updatedAt.replace(" ", "T")}Z`))}`}>↻</span>}{entry.status && <span className="log-status">{entry.status}</span>}</div>
+        <button className="log-menu-trigger" aria-label="Действия с записью" aria-haspopup="menu" aria-expanded={menuId === entry.id} onClick={() => setMenuId((current) => current === entry.id ? null : entry.id)}>⋯</button>
+        {menuId === entry.id && <div className="log-menu" role="menu"><button role="menuitem" onClick={() => edit(entry)}>Изменить</button><button role="menuitem" className="danger" onClick={() => void remove(entry)}>Удалить</button></div>}
         <p className="log-content">{entry.content}</p>
         {(entry.people.length > 0 || entry.projects.length > 0) && <div className="relation-chips">{entry.people.map((person) => <span key={person.id}>@{person.alias}</span>)}{entry.projects.map((project) => <span key={project.id}>#{project.slug}</span>)}</div>}
         {entry.type === "task" && (entry.assigneeId || entry.dueDate) && <div className="task-detail">{entry.assigneeId && <span>Assignee: {assigneeName(entry.assigneeId) ?? "Unknown"}</span>}{entry.dueDate && <span>Due: {entry.dueDate}</span>}</div>}
         {entry.sources.length > 0 && <div className="source-links">{entry.sources.map((source) => <a key={source.id ?? source.url} href={source.url} target="_blank" rel="noreferrer">↗ {source.label}</a>)}</div>}
-        <div className="log-actions"><span>Обновлено {new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" }).format(new Date(`${entry.updatedAt.replace(" ", "T")}Z`))}</span><div><button onClick={() => edit(entry)}>Изменить</button><button className="danger" onClick={() => void remove(entry)}>Удалить</button></div></div>
       </article>)}</div>}
       {hasMore && <button className="load-more" disabled={loading} onClick={() => void load(page + 1, true)}>{loading ? "Загружаем…" : "Показать ещё"}</button>}
     </section>
