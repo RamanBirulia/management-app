@@ -1,0 +1,2 @@
+import { buildApp } from "./app.js"; import { config } from "./config.js"; import { sql } from "./db.js";
+const app=buildApp(); async function shutdown(signal:string){app.log.info({signal},"shutting down");await app.close();await sql.end({timeout:5});process.exit(0);} process.on("SIGTERM",()=>void shutdown("SIGTERM"));process.on("SIGINT",()=>void shutdown("SIGINT"));await app.listen({host:config.HOST,port:config.PORT});

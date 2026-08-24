@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-management_log}
+      POSTGRES_USER: ${POSTGRES_USER:-management}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-management} -d ${POSTGRES_DB:-management_log}"], interval: 5s, timeout: 3s, retries: 10}
+  api:
+    build: {context: ., dockerfile: Dockerfile.api}
+    restart: unless-stopped
+    environment: {NODE_ENV: production, DATABASE_URL: "postgres://${POSTGRES_USER:-management}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-management_log}"}
+    depends_on: {postgres: {condition: service_healthy}}
+  web:
+    build: {context: ., dockerfile: Dockerfile.web}
+    restart: unless-stopped
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment: {APP_HOST: "${APP_HOST:-localhost}"}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]
+    depends_on: [api, web]
+volumes: {postgres_data: {}, caddy_data: {}, caddy_config: {}}
