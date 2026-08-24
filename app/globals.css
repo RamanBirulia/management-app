@@ -112,8 +112,10 @@ select:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(42,123,114,.1
 .log-menu button { display:block; width:100%; padding:8px 10px; border:0; background:transparent; color:#52656f; text-align:left; font-size:12px; cursor:pointer; }
 .log-menu button:hover { background:#edf3f2; }.log-menu button.danger { color:#a3504a; }
 .log-content { margin:10px 0 8px; color:#253943; font-size:14px; line-height:1.48; white-space:pre-wrap; overflow-wrap:anywhere; }
-.relation-chips,.task-detail,.source-links { display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
-.relation-chips span { padding:4px 7px; border-radius:3px; background:#e8f1ef; color:#2a7169; font:11px ui-monospace,monospace; }
+.task-detail,.source-links { display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
+.inline-mention { display:inline; padding:1px 4px 2px; border-radius:3px; font-weight:650; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+.inline-mention.person { color:#246b5f; background:#e5f2ee; }
+.inline-mention.project { color:#2f6092; background:#e7f0fa; }
 .task-detail span { color:#667a84; font-size:11px; }
 .source-links { margin-bottom:0; }
 .source-links a { padding:3px 6px; border:1px solid #d9e1e4; color:#3b716d; background:#fbfcfc; text-decoration:none; font-size:10px; line-height:1.25; }

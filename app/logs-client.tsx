@@ -21,6 +21,24 @@ function localDateTime(value = new Date()) {
 
 function typeLabel(type: LogType) { return type === "decision" ? "Decision" : type === "task" ? "Task" : "Question"; }
 
+function renderLinkedContent(entry: LogEntry) {
+  const peopleByAlias = new Map(entry.people.map((person) => [person.alias.toLowerCase(), person]));
+  const projectsBySlug = new Map(entry.projects.map((project) => [project.slug.toLowerCase(), project]));
+  const parts = entry.content.split(/([@#][a-zA-Z0-9._-]+)/g);
+
+  return parts.map((part, index) => {
+    const match = part.match(/^([@#])([a-zA-Z0-9._-]+)$/);
+    if (!match) return part;
+    const [, prefix, handle] = match;
+    if (prefix === "@") {
+      const person = peopleByAlias.get(handle.toLowerCase());
+      return person ? <span className="inline-mention person" title={`@${person.alias}`} key={`${part}-${index}`}>{person.displayName}</span> : part;
+    }
+    const project = projectsBySlug.get(handle.toLowerCase());
+    return project ? <span className="inline-mention project" title={`#${project.slug}`} key={`${part}-${index}`}>{project.name}</span> : part;
+  });
+}
+
 export default function LogsClient() {
   const [people, setPeople] = useState<Person[]>([]); const [projects, setProjects] = useState<Project[]>([]);
   const [entries, setEntries] = useState<LogEntry[]>([]); const [page, setPage] = useState(1); const [hasMore, setHasMore] = useState(false);
@@ -129,8 +147,7 @@ export default function LogsClient() {
         <div className="log-meta"><span className={`type-pill ${entry.type}`}>{typeLabel(entry.type)}</span><time>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Tallinn" }).format(new Date(entry.occurredAt))}</time>{entry.updatedAt !== entry.createdAt && <span className="updated-mark" title={`Изменено ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${entry.updatedAt.replace(" ", "T")}Z`))}`}>↻</span>}{entry.status && <span className="log-status">{entry.status}</span>}</div>
         <button className="log-menu-trigger" aria-label="Действия с записью" aria-haspopup="menu" aria-expanded={menuId === entry.id} onClick={() => setMenuId((current) => current === entry.id ? null : entry.id)}>⋯</button>
         {menuId === entry.id && <div className="log-menu" role="menu"><button role="menuitem" onClick={() => edit(entry)}>Изменить</button><button role="menuitem" className="danger" onClick={() => void remove(entry)}>Удалить</button></div>}
-        <p className="log-content">{entry.content}</p>
-        {(entry.people.length > 0 || entry.projects.length > 0) && <div className="relation-chips">{entry.people.map((person) => <span key={person.id}>@{person.alias}</span>)}{entry.projects.map((project) => <span key={project.id}>#{project.slug}</span>)}</div>}
+        <p className="log-content">{renderLinkedContent(entry)}</p>
         {entry.type === "task" && (entry.assigneeId || entry.dueDate) && <div className="task-detail">{entry.assigneeId && <span>Assignee: {assigneeName(entry.assigneeId) ?? "Unknown"}</span>}{entry.dueDate && <span>Due: {entry.dueDate}</span>}</div>}
         {entry.sources.length > 0 && <div className="source-links">{entry.sources.map((source) => <a key={source.id ?? source.url} href={source.url} target="_blank" rel="noreferrer">↗ {source.label}</a>)}</div>}
       </article>)}</div>}
