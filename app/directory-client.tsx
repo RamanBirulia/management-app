@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { Person, Project } from "./directory-domain";
+import { generatePersonAlias, generateProjectSlug } from "./directory-domain";
 
 type Tab = "people" | "projects";
 type EditableRecord = Person | Project;
@@ -21,6 +22,9 @@ export default function DirectoryClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<EditableRecord | null>(null);
+  const [newName, setNewName] = useState("");
+  const [newHandle, setNewHandle] = useState("");
+  const [handleEdited, setHandleEdited] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,11 +48,11 @@ export default function DirectoryClient() {
   const activeCount = useMemo(() => records.filter((item) => item.status === "active").length, [records]);
 
   async function saveNew(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); setError(null);
+    event.preventDefault(); setError(null);
     try {
-      if (tab === "people") await api("/api/people", { method: "POST", body: JSON.stringify({ displayName: data.get("name"), alias: data.get("handle") }) });
-      else await api("/api/projects", { method: "POST", body: JSON.stringify({ name: data.get("name"), slug: data.get("handle") }) });
-      form.reset(); await load();
+      if (tab === "people") await api("/api/people", { method: "POST", body: JSON.stringify({ displayName: newName, alias: newHandle }) });
+      else await api("/api/projects", { method: "POST", body: JSON.stringify({ name: newName, slug: newHandle }) });
+      setNewName(""); setNewHandle(""); setHandleEdited(false); await load();
     } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить"); }
   }
 
@@ -68,11 +72,20 @@ export default function DirectoryClient() {
     catch (statusError) { setError(statusError instanceof Error ? statusError.message : "Не удалось изменить статус"); }
   }
 
+  function selectTab(nextTab: Tab) {
+    setTab(nextTab); setEditing(null); setNewName(""); setNewHandle(""); setHandleEdited(false);
+  }
+
+  function changeNewName(value: string) {
+    setNewName(value);
+    if (!handleEdited) setNewHandle(tab === "people" ? generatePersonAlias(value) : generateProjectSlug(value));
+  }
+
   return <>
     <section className="directory-toolbar" aria-label="Переключатель справочников">
       <div className="tabs" role="tablist">
-        <button className={tab === "people" ? "tab active" : "tab"} onClick={() => { setTab("people"); setEditing(null); }} role="tab" aria-selected={tab === "people"}>Люди <span>{people.length}</span></button>
-        <button className={tab === "projects" ? "tab active" : "tab"} onClick={() => { setTab("projects"); setEditing(null); }} role="tab" aria-selected={tab === "projects"}>Проекты <span>{projects.length}</span></button>
+        <button className={tab === "people" ? "tab active" : "tab"} onClick={() => selectTab("people")} role="tab" aria-selected={tab === "people"}>Люди <span>{people.length}</span></button>
+        <button className={tab === "projects" ? "tab active" : "tab"} onClick={() => selectTab("projects")} role="tab" aria-selected={tab === "projects"}>Проекты <span>{projects.length}</span></button>
       </div>
       <label className="archive-toggle"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> Показывать архив</label>
     </section>
@@ -92,10 +105,10 @@ export default function DirectoryClient() {
 
       <aside className="form-panel">
         <p className="eyebrow">Новая запись</p><h2>{tab === "people" ? "Добавить человека" : "Добавить проект"}</h2>
-        <p className="form-intro">{tab === "people" ? "Alias будет использоваться после знака @." : "Slug будет использоваться после знака #."}</p>
+        <p className="form-intro">{tab === "people" ? "Alias создаётся автоматически в формате first.last и используется после @." : "Slug создаётся автоматически через нижнее подчёркивание и используется после #."}</p>
         <form onSubmit={saveNew}>
-          <label>{tab === "people" ? "Отображаемое имя" : "Название проекта"}<input name="name" required maxLength={100} placeholder={tab === "people" ? "Alex Morgan" : "Approvals"} /></label>
-          <label>{tab === "people" ? "Alias" : "Slug"}<div className="prefixed-input"><span>{tab === "people" ? "@" : "#"}</span><input name="handle" required minLength={2} maxLength={40} pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,39}" placeholder={tab === "people" ? "alex" : "approvals"} /></div></label>
+          <label>{tab === "people" ? "Отображаемое имя" : "Название проекта"}<input name="name" required maxLength={100} value={newName} onChange={(event) => changeNewName(event.target.value)} placeholder={tab === "people" ? "Alex Morgan" : "Content Editing Form"} /></label>
+          <label>{tab === "people" ? "Alias" : "Slug"}<div className="prefixed-input"><span>{tab === "people" ? "@" : "#"}</span><input name="handle" required minLength={2} maxLength={40} pattern={tab === "people" ? "[A-Za-z0-9][A-Za-z0-9._-]{1,39}" : "[A-Za-z0-9][A-Za-z0-9_-]{1,39}"} value={newHandle} onChange={(event) => { setNewHandle(event.target.value.toLowerCase()); setHandleEdited(true); }} placeholder={tab === "people" ? "alex.morgan" : "content_editing_form"} /></div></label>
           <button className="primary-button" type="submit">Добавить</button>
         </form>
         <div className="form-note"><strong>Стабильные связи</strong><p>Переименование не изменяет внутренний ID и не сломает будущие записи журнала.</p></div>
@@ -106,7 +119,7 @@ export default function DirectoryClient() {
       <div className="modal-heading"><div><p className="eyebrow">Редактирование</p><h2 id="edit-title">{"displayName" in editing ? editing.displayName : editing.name}</h2></div><button className="close-button" onClick={() => setEditing(null)} aria-label="Закрыть">×</button></div>
       <form onSubmit={saveEdit}>
         <label>{"displayName" in editing ? "Отображаемое имя" : "Название проекта"}<input name="name" required defaultValue={"displayName" in editing ? editing.displayName : editing.name} /></label>
-        <label>{"displayName" in editing ? "Alias" : "Slug"}<div className="prefixed-input"><span>{"displayName" in editing ? "@" : "#"}</span><input name="handle" required pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,39}" defaultValue={"displayName" in editing ? editing.alias : editing.slug} /></div></label>
+        <label>{"displayName" in editing ? "Alias" : "Slug"}<div className="prefixed-input"><span>{"displayName" in editing ? "@" : "#"}</span><input name="handle" required pattern={"displayName" in editing ? "[A-Za-z0-9][A-Za-z0-9._-]{1,39}" : "[A-Za-z0-9][A-Za-z0-9_-]{1,39}"} defaultValue={"displayName" in editing ? editing.alias : editing.slug} /></div></label>
         <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditing(null)}>Отмена</button><button className="primary-button" type="submit">Сохранить</button></div>
       </form>
     </section></div>}

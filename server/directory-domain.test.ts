@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeHandle, validateHandle } from "../app/directory-domain";
+import { generatePersonAlias, generateProjectSlug, normalizeHandle, validateHandle } from "../app/directory-domain";
 
 describe("directory handles", () => {
   it("normalizes mention prefixes and case", () => {
@@ -8,13 +8,20 @@ describe("directory handles", () => {
   });
 
   it("accepts stable aliases and slugs", () => {
-    expect(validateHandle("alex-morgan", "alias")).toBeNull();
+    expect(validateHandle("alex.morgan", "alias")).toBeNull();
     expect(validateHandle("product_2026", "slug")).toBeNull();
+  });
+
+  it("generates Slack-style defaults from display names", () => {
+    expect(generatePersonAlias("Alex Morgan")).toBe("alex.morgan");
+    expect(generatePersonAlias(" José  García ")).toBe("jose.garcia");
+    expect(generateProjectSlug("Content Editing Form")).toBe("content_editing_form");
   });
 
   it("rejects short, non-latin, and whitespace handles", () => {
     expect(validateHandle("a", "alias")).toContain("2–40");
     expect(validateHandle("Алекс", "alias")).toContain("латинских");
     expect(validateHandle("product team", "slug")).toContain("латинских");
+    expect(validateHandle("content.editing", "slug")).toContain("_ или -");
   });
 });
