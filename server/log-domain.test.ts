@@ -1,0 +1,20 @@
+import { describe, expect, it } from "vitest";
+import { validateLogPayload } from "../app/log-domain";
+
+const base = { type: "decision", content: "Решили запустить rollout", occurredAt: "2026-08-24T14:30:00.000Z" };
+
+describe("log payload validation", () => {
+  it("accepts decisions with valid sources", () => {
+    expect(validateLogPayload({ ...base, sources: [{ label: "Slack", url: "https://example.com/thread" }] })).toBeNull();
+  });
+
+  it("rejects missing content and unsafe source protocols", () => {
+    expect(validateLogPayload({ ...base, content: "" })).toContain("обязателен");
+    expect(validateLogPayload({ ...base, sources: [{ label: "File", url: "file:///secret" }] })).toContain("http");
+  });
+
+  it("validates type-specific statuses", () => {
+    expect(validateLogPayload({ ...base, type: "task", status: "blocked" })).toContain("статус задачи");
+    expect(validateLogPayload({ ...base, type: "question", status: "resolved" })).toBeNull();
+  });
+});

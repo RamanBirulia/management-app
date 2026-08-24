@@ -54,4 +54,38 @@ async function initializeSchema(db: D1Database) {
   if (!projectColumns.results.some((column) => column.name === "note")) {
     await db.prepare("ALTER TABLE projects ADD COLUMN note TEXT NOT NULL DEFAULT ''").run();
   }
+
+  await db.batch([
+    db.prepare(`CREATE TABLE IF NOT EXISTS log_entries (
+      id TEXT PRIMARY KEY NOT NULL,
+      type TEXT NOT NULL CHECK (type IN ('decision', 'task', 'question')),
+      content TEXT NOT NULL,
+      occurred_at TEXT NOT NULL,
+      status TEXT,
+      assignee_id TEXT,
+      due_date TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_log_entries_occurred_at ON log_entries(occurred_at DESC, id DESC)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS log_people (
+      log_id TEXT NOT NULL,
+      person_id TEXT NOT NULL,
+      PRIMARY KEY (log_id, person_id)
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS log_projects (
+      log_id TEXT NOT NULL,
+      project_id TEXT NOT NULL,
+      PRIMARY KEY (log_id, project_id)
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS sources (
+      id TEXT PRIMARY KEY NOT NULL,
+      log_id TEXT NOT NULL,
+      label TEXT NOT NULL,
+      url TEXT NOT NULL
+    )`),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_log_people_person_id ON log_people(person_id, log_id)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_log_projects_project_id ON log_projects(project_id, log_id)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_sources_log_id ON sources(log_id)"),
+  ]);
 }

@@ -8,6 +8,7 @@
 2. [Stage 0 — Foundation](stage-0-foundation.md) — фактически реализованный baseline, способ проверки и ограничения этапа.
 3. [Stage 1 — People & Projects](stage-1-people-projects.md) — справочники людей и проектов, API, хранение данных и критерии приёмки.
 4. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
+5. [Stage 2 — MVP Composer & Journal](stage-2-composer-journal.md) — ежедневный composer, журнал, mentions, sources и type-specific поля.
 
 ## Иерархия источников
 

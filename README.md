@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Stage 1 — People & Projects завершён.** Поверх технического каркаса реализованы первые доменные справочники:
+**Stage 2 — MVP Composer & Journal завершён.** Приложение поддерживает первый ежедневный сценарий:
 
 - frontend на React/TypeScript;
 - Node.js/Fastify API с `/health/live`, `/health/ready` и `/api/meta`;
@@ -17,8 +17,12 @@
 - создание, редактирование, архивация и восстановление людей и проектов;
 - case-insensitive aliases и slugs для будущих `@people` и `#projects`;
 - серверная D1-база опубликованной Sites-версии и SQLite migration.
+- Decision, Task и Question в едином журнале;
+- `@people`/`#projects` autocomplete и структурированные связи;
+- source-ссылки, assignee, due date и type-specific statuses;
+- редактирование, подтверждаемое удаление и пагинация.
 
-Следующий продуктовый этап — **Stage 2: MVP composer и единый журнал**.
+Следующий продуктовый этап — **Stage 3: фильтры и контекстные страницы**.
 
 ## Документация
 
@@ -27,6 +31,7 @@
 - [Отчёт о Stage 0](docs/stage-0-foundation.md)
 - [Отчёт о Stage 1](docs/stage-1-people-projects.md)
 - [ADR-001: D1 для Sites runtime](docs/decisions/001-sites-d1-runtime.md)
+- [Отчёт о Stage 2](docs/stage-2-composer-journal.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.
 
