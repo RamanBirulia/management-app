@@ -24,6 +24,7 @@ async function initializeSchema(db: D1Database) {
       id TEXT PRIMARY KEY NOT NULL,
       display_name TEXT NOT NULL,
       alias TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -34,6 +35,7 @@ async function initializeSchema(db: D1Database) {
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL,
       slug TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -41,4 +43,15 @@ async function initializeSchema(db: D1Database) {
     )`),
     db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_slug_unique ON projects(slug)"),
   ]);
+
+  const [personColumns, projectColumns] = await Promise.all([
+    db.prepare("PRAGMA table_info(people)").all<{ name: string }>(),
+    db.prepare("PRAGMA table_info(projects)").all<{ name: string }>(),
+  ]);
+  if (!personColumns.results.some((column) => column.name === "note")) {
+    await db.prepare("ALTER TABLE people ADD COLUMN note TEXT NOT NULL DEFAULT ''").run();
+  }
+  if (!projectColumns.results.some((column) => column.name === "note")) {
+    await db.prepare("ALTER TABLE projects ADD COLUMN note TEXT NOT NULL DEFAULT ''").run();
+  }
 }

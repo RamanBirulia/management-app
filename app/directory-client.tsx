@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import type { Person, Project } from "./directory-domain";
 import { generatePersonAlias, generateProjectSlug } from "./directory-domain";
 
@@ -59,7 +60,9 @@ export default function DirectoryClient() {
   async function saveEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!editing) return; const data = new FormData(event.currentTarget);
     const kind = "displayName" in editing ? "people" : "projects";
-    const payload = kind === "people" ? { displayName: data.get("name"), alias: data.get("handle") } : { name: data.get("name"), slug: data.get("handle") };
+    const payload = kind === "people"
+      ? { displayName: data.get("name"), alias: data.get("handle"), note: data.get("note") }
+      : { name: data.get("name"), slug: data.get("handle"), note: data.get("note") };
     try { await api(`/api/${kind}/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) }); setEditing(null); await load(); }
     catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить изменения"); }
   }
@@ -99,6 +102,7 @@ export default function DirectoryClient() {
             <div className="record-avatar" aria-hidden="true">{name.slice(0, 2).toUpperCase()}</div>
             <div className="record-main"><div className="record-title"><strong>{name}</strong>{record.status === "archived" && <span className="archived-label">архив</span>}</div><span className="handle">{handle}</span></div>
             <div className="record-actions"><button onClick={() => setEditing(record)}>Изменить</button><button onClick={() => void changeStatus(record)}>{record.status === "active" ? "В архив" : "Вернуть"}</button></div>
+            {record.note && <div className="record-note"><ReactMarkdown components={{ a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer">{children}</a> }}>{record.note}</ReactMarkdown></div>}
           </article>; })}
         </div>}
       </div>
@@ -120,6 +124,7 @@ export default function DirectoryClient() {
       <form onSubmit={saveEdit}>
         <label>{"displayName" in editing ? "Отображаемое имя" : "Название проекта"}<input name="name" required defaultValue={"displayName" in editing ? editing.displayName : editing.name} /></label>
         <label>{"displayName" in editing ? "Alias" : "Slug"}<div className="prefixed-input"><span>{"displayName" in editing ? "@" : "#"}</span><input name="handle" required pattern={"displayName" in editing ? "[A-Za-z0-9][A-Za-z0-9._-]{1,39}" : "[A-Za-z0-9][A-Za-z0-9_-]{1,39}"} defaultValue={"displayName" in editing ? editing.alias : editing.slug} /></div></label>
+        <label>Note <span className="field-hint">Поддерживает Markdown и ссылки</span><textarea name="note" maxLength={10000} rows={8} defaultValue={editing.note} placeholder={"displayName" in editing ? "Заметки one-on-one, договорённости, полезные ссылки…" : "Контекст проекта, ссылки, договорённости…"} /></label>
         <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditing(null)}>Отмена</button><button className="primary-button" type="submit">Сохранить</button></div>
       </form>
     </section></div>}

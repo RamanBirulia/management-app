@@ -4,6 +4,7 @@ export type Person = {
   id: string;
   displayName: string;
   alias: string;
+  note: string;
   status: DirectoryStatus;
   createdAt: string;
   updatedAt: string;
@@ -14,6 +15,7 @@ export type Project = {
   id: string;
   name: string;
   slug: string;
+  note: string;
   status: DirectoryStatus;
   createdAt: string;
   updatedAt: string;

@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   const db = getDirectoryDb();
   await ensureDirectorySchema(db);
   const includeArchived = new URL(request.url).searchParams.get("includeArchived") === "true";
-  const query = `SELECT id, name, slug, status, created_at AS createdAt,
+  const query = `SELECT id, name, slug, note, status, created_at AS createdAt,
     updated_at AS updatedAt, archived_at AS archivedAt FROM projects
     ${includeArchived ? "" : "WHERE status = 'active'"}
     ORDER BY status ASC, name COLLATE NOCASE ASC`;
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const id = crypto.randomUUID();
   try {
     await db.prepare("INSERT INTO projects (id, name, slug) VALUES (?, ?, ?)").bind(id, name, slug).run();
-    const project = await db.prepare(`SELECT id, name, slug, status, created_at AS createdAt,
+    const project = await db.prepare(`SELECT id, name, slug, note, status, created_at AS createdAt,
       updated_at AS updatedAt, archived_at AS archivedAt FROM projects WHERE id = ?`).bind(id).first();
     return Response.json({ project }, { status: 201 });
   } catch (error) {

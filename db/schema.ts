@@ -7,6 +7,7 @@ export const people = sqliteTable(
     id: text("id").primaryKey(),
     displayName: text("display_name").notNull(),
     alias: text("alias").notNull(),
+    note: text("note").notNull().default(""),
     status: text("status", { enum: ["active", "archived"] })
       .notNull()
       .default("active"),
@@ -23,6 +24,7 @@ export const projects = sqliteTable(
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
+    note: text("note").notNull().default(""),
     status: text("status", { enum: ["active", "archived"] })
       .notNull()
       .default("active"),
