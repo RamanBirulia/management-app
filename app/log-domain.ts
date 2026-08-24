@@ -10,6 +10,7 @@ export type LogEntry = {
   id: string;
   type: LogType;
   content: string;
+  description: string;
   occurredAt: string;
   status: string | null;
   assigneeId: string | null;
@@ -24,6 +25,7 @@ export type LogEntry = {
 export type LogPayload = {
   type?: string;
   content?: string;
+  description?: string;
   occurredAt?: string;
   status?: string | null;
   assigneeId?: string | null;
@@ -37,6 +39,7 @@ export function validateLogPayload(payload: LogPayload) {
   if (!payload.type || !["decision", "task", "question"].includes(payload.type)) return "Выберите тип записи";
   if (!payload.content?.trim()) return "Текст записи обязателен";
   if (payload.content.trim().length > 5000) return "Текст записи не должен превышать 5 000 символов";
+  if ((payload.description ?? "").trim().length > 20_000) return "Описание не должно превышать 20 000 символов";
   if (!payload.occurredAt || Number.isNaN(Date.parse(payload.occurredAt))) return "Укажите корректные дату и время";
   if (payload.type === "task" && payload.status && !["unassigned", "open", "done", "cancelled"].includes(payload.status)) return "Некорректный статус задачи";
   if (payload.type === "question" && payload.status && !["open", "resolved"].includes(payload.status)) return "Некорректный статус вопроса";

@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import DirectoryEditModal from "./directory-edit-modal";
 import type { Person, Project } from "./directory-domain";
 import { generatePersonAlias, generateProjectSlug } from "./directory-domain";
 
@@ -57,16 +58,6 @@ export default function DirectoryClient() {
     } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить"); }
   }
 
-  async function saveEdit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (!editing) return; const data = new FormData(event.currentTarget);
-    const kind = "displayName" in editing ? "people" : "projects";
-    const payload = kind === "people"
-      ? { displayName: data.get("name"), alias: data.get("handle"), note: data.get("note") }
-      : { name: data.get("name"), slug: data.get("handle"), note: data.get("note") };
-    try { await api(`/api/${kind}/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) }); setEditing(null); await load(); }
-    catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить изменения"); }
-  }
-
   async function changeStatus(record: EditableRecord) {
     const kind = "displayName" in record ? "people" : "projects";
     const nextStatus = record.status === "active" ? "archived" : "active";
@@ -119,14 +110,6 @@ export default function DirectoryClient() {
       </aside>
     </section>
 
-    {editing && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditing(null); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
-      <div className="modal-heading"><div><p className="eyebrow">Редактирование</p><h2 id="edit-title">{"displayName" in editing ? editing.displayName : editing.name}</h2></div><button className="close-button" onClick={() => setEditing(null)} aria-label="Закрыть">×</button></div>
-      <form onSubmit={saveEdit}>
-        <label>{"displayName" in editing ? "Отображаемое имя" : "Название проекта"}<input name="name" required defaultValue={"displayName" in editing ? editing.displayName : editing.name} /></label>
-        <label>{"displayName" in editing ? "Alias" : "Slug"}<div className="prefixed-input"><span>{"displayName" in editing ? "@" : "#"}</span><input name="handle" required pattern={"displayName" in editing ? "[A-Za-z0-9][A-Za-z0-9._-]{1,39}" : "[A-Za-z0-9][A-Za-z0-9_-]{1,39}"} defaultValue={"displayName" in editing ? editing.alias : editing.slug} /></div></label>
-        <label>Note <span className="field-hint">Поддерживает Markdown и ссылки</span><textarea name="note" maxLength={10000} rows={8} defaultValue={editing.note} placeholder={"displayName" in editing ? "Заметки one-on-one, договорённости, полезные ссылки…" : "Контекст проекта, ссылки, договорённости…"} /></label>
-        <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditing(null)}>Отмена</button><button className="primary-button" type="submit">Сохранить</button></div>
-      </form>
-    </section></div>}
+    {editing && <DirectoryEditModal record={editing} onClose={() => setEditing(null)} onSaved={load} />}
   </>;
 }

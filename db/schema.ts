@@ -39,6 +39,7 @@ export const logEntries = sqliteTable("log_entries", {
   id: text("id").primaryKey(),
   type: text("type", { enum: ["decision", "task", "question"] }).notNull(),
   content: text("content").notNull(),
+  description: text("description").notNull().default(""),
   occurredAt: text("occurred_at").notNull(),
   status: text("status"),
   assigneeId: text("assignee_id"),

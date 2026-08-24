@@ -18,6 +18,8 @@
 - Для Task: status, assignee и due date.
 - Для Question: open/resolved status.
 - Несколько source-ссылок с label и валидным HTTP(S) URL.
+- Отдельные поля заголовка и необязательного подробного описания; описание по умолчанию свёрнуто в журнале.
+- Упоминания людей и проектов отображаются inline в заголовке и описании; двойной клик открывает их форму редактирования прямо из журнала.
 - Единый All Logs в обратной хронологии.
 - Постраничная загрузка по 20 записей.
 - Редактирование всей записи и подтверждаемое удаление.
@@ -26,7 +28,7 @@
 
 ## Данные и API
 
-- `log_entries`: основной текст, тип, occurred_at, type-specific status, assignee и due date.
+- `log_entries`: заголовок, описание, тип, occurred_at, type-specific status, assignee и due date.
 - `log_people`, `log_projects`: структурированные many-to-many связи.
 - `sources`: несколько ссылок на одну запись.
 - `GET/POST /api/logs`.
@@ -37,6 +39,7 @@
 ## Правила
 
 - Текст записи обязателен и ограничен 5 000 символами.
+- Описание необязательно и ограничено 20 000 символами.
 - Source URL принимает только `http` и `https`.
 - Decision не имеет status.
 - Task status: unassigned/open/done/cancelled.

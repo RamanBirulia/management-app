@@ -60,6 +60,7 @@ async function initializeSchema(db: D1Database) {
       id TEXT PRIMARY KEY NOT NULL,
       type TEXT NOT NULL CHECK (type IN ('decision', 'task', 'question')),
       content TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
       occurred_at TEXT NOT NULL,
       status TEXT,
       assignee_id TEXT,
@@ -88,4 +89,9 @@ async function initializeSchema(db: D1Database) {
     db.prepare("CREATE INDEX IF NOT EXISTS idx_log_projects_project_id ON log_projects(project_id, log_id)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_sources_log_id ON sources(log_id)"),
   ]);
+
+  const logColumns = await db.prepare("PRAGMA table_info(log_entries)").all<{ name: string }>();
+  if (!logColumns.results.some((column) => column.name === "description")) {
+    await db.prepare("ALTER TABLE log_entries ADD COLUMN description TEXT NOT NULL DEFAULT ''").run();
+  }
 }

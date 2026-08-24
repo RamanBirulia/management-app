@@ -10,10 +10,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const db = getDirectoryDb(); await ensureDirectorySchema(db);
   if (!await getLogById(db, id)) return Response.json({ error: "Запись не найдена" }, { status: 404 });
   const type = payload.type!; const status = type === "task" ? (payload.status ?? "unassigned") : type === "question" ? (payload.status ?? "open") : null;
-  const mentionIds = await resolveMentionIds(db, payload.content!.trim(), payload.personIds, payload.projectIds);
+  const description = (payload.description ?? "").trim();
+  const mentionIds = await resolveMentionIds(db, `${payload.content!.trim()}\n${description}`, payload.personIds, payload.projectIds);
   const statements = [
-    db.prepare(`UPDATE log_entries SET type = ?, content = ?, occurred_at = ?, status = ?, assignee_id = ?, due_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-      .bind(type, payload.content!.trim(), new Date(payload.occurredAt!).toISOString(), status, type === "task" ? payload.assigneeId ?? null : null, type === "task" ? payload.dueDate ?? null : null, id),
+    db.prepare(`UPDATE log_entries SET type = ?, content = ?, description = ?, occurred_at = ?, status = ?, assignee_id = ?, due_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+      .bind(type, payload.content!.trim(), description, new Date(payload.occurredAt!).toISOString(), status, type === "task" ? payload.assigneeId ?? null : null, type === "task" ? payload.dueDate ?? null : null, id),
     db.prepare("DELETE FROM log_people WHERE log_id = ?").bind(id),
     db.prepare("DELETE FROM log_projects WHERE log_id = ?").bind(id),
     db.prepare("DELETE FROM sources WHERE log_id = ?").bind(id),

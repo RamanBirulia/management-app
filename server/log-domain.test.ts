@@ -17,4 +17,9 @@ describe("log payload validation", () => {
     expect(validateLogPayload({ ...base, type: "task", status: "blocked" })).toContain("статус задачи");
     expect(validateLogPayload({ ...base, type: "question", status: "resolved" })).toBeNull();
   });
+
+  it("accepts an optional description and limits its size", () => {
+    expect(validateLogPayload({ ...base, description: "Подробный контекст для @core и #quotes" })).toBeNull();
+    expect(validateLogPayload({ ...base, description: "x".repeat(20_001) })).toContain("20 000");
+  });
 });

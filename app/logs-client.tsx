@@ -2,6 +2,7 @@
 
 import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { Person, Project } from "./directory-domain";
+import DirectoryEditModal from "./directory-edit-modal";
 import type { LogEntry, LogSource, LogType } from "./log-domain";
 
 type SourceDraft = LogSource & { key: string };
@@ -21,10 +22,10 @@ function localDateTime(value = new Date()) {
 
 function typeLabel(type: LogType) { return type === "decision" ? "Decision" : type === "task" ? "Task" : "Question"; }
 
-function renderLinkedContent(entry: LogEntry) {
+function renderLinkedContent(entry: LogEntry, text: string, openRecord: (kind: "person" | "project", id: string) => void) {
   const peopleByAlias = new Map(entry.people.map((person) => [person.alias.toLowerCase(), person]));
   const projectsBySlug = new Map(entry.projects.map((project) => [project.slug.toLowerCase(), project]));
-  const parts = entry.content.split(/([@#][a-zA-Z0-9._-]+)/g);
+  const parts = text.split(/([@#][a-zA-Z0-9._-]+)/g);
 
   return parts.map((part, index) => {
     const match = part.match(/^([@#])([a-zA-Z0-9._-]+)$/);
@@ -32,10 +33,10 @@ function renderLinkedContent(entry: LogEntry) {
     const [, prefix, handle] = match;
     if (prefix === "@") {
       const person = peopleByAlias.get(handle.toLowerCase());
-      return person ? <span className="inline-mention person" title={`@${person.alias}`} key={`${part}-${index}`}>{person.displayName}</span> : part;
+      return person ? <button type="button" className="inline-mention person" title={`@${person.alias} · двойной клик для редактирования`} onDoubleClick={() => openRecord("person", person.id)} key={`${part}-${index}`}>{person.displayName}</button> : part;
     }
     const project = projectsBySlug.get(handle.toLowerCase());
-    return project ? <span className="inline-mention project" title={`#${project.slug}`} key={`${part}-${index}`}>{project.name}</span> : part;
+    return project ? <button type="button" className="inline-mention project" title={`#${project.slug} · двойной клик для редактирования`} onDoubleClick={() => openRecord("project", project.id)} key={`${part}-${index}`}>{project.name}</button> : part;
   });
 }
 
@@ -44,10 +45,11 @@ export default function LogsClient() {
   const [entries, setEntries] = useState<LogEntry[]>([]); const [page, setPage] = useState(1); const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null); const [type, setType] = useState<LogType>("decision");
-  const [content, setContent] = useState(""); const [occurredAt, setOccurredAt] = useState(localDateTime());
+  const [content, setContent] = useState(""); const [description, setDescription] = useState(""); const [occurredAt, setOccurredAt] = useState(localDateTime());
   const [status, setStatus] = useState("open"); const [assigneeId, setAssigneeId] = useState(""); const [dueDate, setDueDate] = useState("");
   const [sources, setSources] = useState<SourceDraft[]>([]); const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [editingRecord, setEditingRecord] = useState<Person | Project | null>(null);
 
   const load = useCallback(async (nextPage = 1, append = false) => {
     setLoading(true); setError(null);
@@ -89,7 +91,7 @@ export default function LogsClient() {
   }
 
   function linkedIds() {
-    const tokens = new Set(content.split(/\s+/).map((token) => token.replace(/[,:;!?]+$/g, "")));
+    const tokens = new Set(`${content}\n${description}`.split(/\s+/).map((token) => token.replace(/[,:;!?]+$/g, "")));
     return {
       personIds: people.filter((person) => tokens.has(`@${person.alias}`)).map((person) => person.id),
       projectIds: projects.filter((project) => tokens.has(`#${project.slug}`)).map((project) => project.id),
@@ -97,13 +99,13 @@ export default function LogsClient() {
   }
 
   function resetComposer() {
-    setEditingId(null); setType("decision"); setContent(""); setOccurredAt(localDateTime()); setStatus("open"); setAssigneeId(""); setDueDate(""); setSources([]); setError(null);
+    setEditingId(null); setType("decision"); setContent(""); setDescription(""); setOccurredAt(localDateTime()); setStatus("open"); setAssigneeId(""); setDueDate(""); setSources([]); setError(null);
   }
 
   async function save(event: FormEvent) {
     event.preventDefault(); if (saving) return; setSaving(true); setError(null);
     const ids = linkedIds();
-    const payload = { type, content, occurredAt, status: type === "task" ? status : type === "question" ? status : null, assigneeId: type === "task" ? assigneeId || null : null, dueDate: type === "task" ? dueDate || null : null, ...ids, sources: sources.filter((source) => source.label.trim() || source.url.trim()).map(({ label, url }) => ({ label, url })) };
+    const payload = { type, content, description, occurredAt, status: type === "task" ? status : type === "question" ? status : null, assigneeId: type === "task" ? assigneeId || null : null, dueDate: type === "task" ? dueDate || null : null, ...ids, sources: sources.filter((source) => source.label.trim() || source.url.trim()).map(({ label, url }) => ({ label, url })) };
     try {
       await api(editingId ? `/api/logs/${editingId}` : "/api/logs", { method: editingId ? "PATCH" : "POST", body: JSON.stringify(payload) });
       resetComposer(); await load();
@@ -113,7 +115,7 @@ export default function LogsClient() {
 
   function edit(entry: LogEntry) {
     setMenuId(null);
-    setEditingId(entry.id); setType(entry.type); setContent(entry.content); setOccurredAt(localDateTime(new Date(entry.occurredAt)));
+    setEditingId(entry.id); setType(entry.type); setContent(entry.content); setDescription(entry.description); setOccurredAt(localDateTime(new Date(entry.occurredAt)));
     setStatus(entry.status ?? (entry.type === "task" ? "unassigned" : "open")); setAssigneeId(entry.assigneeId ?? ""); setDueDate(entry.dueDate ?? "");
     setSources(entry.sources.map((source) => ({ ...source, key: source.id ?? crypto.randomUUID() })));
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -127,6 +129,7 @@ export default function LogsClient() {
   }
 
   const assigneeName = (id: string | null) => people.find((person) => person.id === id)?.displayName;
+  const openRecord = (kind: "person" | "project", id: string) => setEditingRecord(kind === "person" ? people.find((person) => person.id === id) ?? null : projects.find((project) => project.id === id) ?? null);
 
   return <>
     <section className="composer-card">
@@ -134,7 +137,8 @@ export default function LogsClient() {
       {error && <div className="error-banner" role="alert">{error}<button onClick={() => setError(null)} aria-label="Закрыть">×</button></div>}
       <form onSubmit={save}>
         <div className="composer-row"><label>Тип<select value={type} onChange={(event) => { const next = event.target.value as LogType; setType(next); setStatus(next === "task" ? "unassigned" : "open"); }}><option value="decision">Decision</option><option value="task">Task</option><option value="question">Question</option></select></label><label>Когда<input type="datetime-local" value={occurredAt} onChange={(event) => setOccurredAt(event.target.value)} required /></label></div>
-        <label>Текст <span className="field-hint">Введите @ для человека или # для проекта</span><div className="composer-input-wrap"><textarea className="composer-text" value={content} onChange={(event) => { setContent(event.target.value); setSuggestionIndex(0); }} onKeyDown={handleComposerKey} maxLength={5000} required rows={4} placeholder="Решили перенести rollout на пятницу @alex #approvals" />{suggestions.length > 0 && <div className="mention-menu" role="listbox">{suggestions.map((suggestion, index) => <button type="button" role="option" aria-selected={index === suggestionIndex} className={index === suggestionIndex ? "selected" : ""} key={`${suggestion.kind}-${suggestion.id}`} onMouseDown={(event) => { event.preventDefault(); chooseSuggestion(suggestion); }}><span>{suggestion.kind === "person" ? "@" : "#"}{suggestion.handle}</span><small>{suggestion.name}</small></button>)}</div>}</div></label>
+        <label>Заголовок <span className="field-hint">Короткая формулировка; @ — человек, # — проект</span><div className="composer-input-wrap"><textarea className="composer-text" value={content} onChange={(event) => { setContent(event.target.value); setSuggestionIndex(0); }} onKeyDown={handleComposerKey} maxLength={5000} required rows={3} placeholder="Объединить команды @core и @platform в рамках #quotes" />{suggestions.length > 0 && <div className="mention-menu" role="listbox">{suggestions.map((suggestion, index) => <button type="button" role="option" aria-selected={index === suggestionIndex} className={index === suggestionIndex ? "selected" : ""} key={`${suggestion.kind}-${suggestion.id}`} onMouseDown={(event) => { event.preventDefault(); chooseSuggestion(suggestion); }}><span>{suggestion.kind === "person" ? "@" : "#"}{suggestion.handle}</span><small>{suggestion.name}</small></button>)}</div>}</div></label>
+        <label>Описание <span className="field-hint">Необязательно; подробный контекст, причины и упоминания</span><textarea className="description-input" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={20000} rows={7} placeholder="Почему приняли решение, какие варианты обсуждали и что важно учесть…" /></label>
         {type === "task" && <div className="composer-row three"><label>Статус<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="unassigned">Unassigned</option><option value="open">Open</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></label><label>Assignee<select value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)}><option value="">Не назначен</option>{people.map((person) => <option key={person.id} value={person.id}>{person.displayName}</option>)}</select></label><label>Due date<input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label></div>}
         {type === "question" && <label className="short-field">Статус<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="open">Open</option><option value="resolved">Resolved</option></select></label>}
         <div className="sources-editor"><div className="sources-heading"><span>Sources</span><button type="button" onClick={() => setSources((current) => [...current, { key: crypto.randomUUID(), label: "", url: "" }])}>+ Добавить ссылку</button></div>{sources.map((source) => <div className="source-row" key={source.key}><input aria-label="Название источника" placeholder="Slack thread" value={source.label} onChange={(event) => setSources((current) => current.map((item) => item.key === source.key ? { ...item, label: event.target.value } : item))} /><input aria-label="URL источника" type="url" placeholder="https://…" value={source.url} onChange={(event) => setSources((current) => current.map((item) => item.key === source.key ? { ...item, url: event.target.value } : item))} /><button type="button" aria-label="Удалить источник" onClick={() => setSources((current) => current.filter((item) => item.key !== source.key))}>×</button></div>)}</div>
@@ -147,11 +151,13 @@ export default function LogsClient() {
         <div className="log-meta"><span className={`type-pill ${entry.type}`}>{typeLabel(entry.type)}</span><time>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Tallinn" }).format(new Date(entry.occurredAt))}</time>{entry.updatedAt !== entry.createdAt && <span className="updated-mark" title={`Изменено ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${entry.updatedAt.replace(" ", "T")}Z`))}`}>↻</span>}{entry.status && <span className="log-status">{entry.status}</span>}</div>
         <button className="log-menu-trigger" aria-label="Действия с записью" aria-haspopup="menu" aria-expanded={menuId === entry.id} onClick={() => setMenuId((current) => current === entry.id ? null : entry.id)}>⋯</button>
         {menuId === entry.id && <div className="log-menu" role="menu"><button role="menuitem" onClick={() => edit(entry)}>Изменить</button><button role="menuitem" className="danger" onClick={() => void remove(entry)}>Удалить</button></div>}
-        <p className="log-content">{renderLinkedContent(entry)}</p>
+        <p className="log-content">{renderLinkedContent(entry, entry.content, openRecord)}</p>
+        {entry.description && <details className="log-description"><summary>Описание</summary><p>{renderLinkedContent(entry, entry.description, openRecord)}</p></details>}
         {entry.type === "task" && (entry.assigneeId || entry.dueDate) && <div className="task-detail">{entry.assigneeId && <span>Assignee: {assigneeName(entry.assigneeId) ?? "Unknown"}</span>}{entry.dueDate && <span>Due: {entry.dueDate}</span>}</div>}
         {entry.sources.length > 0 && <div className="source-links">{entry.sources.map((source) => <a key={source.id ?? source.url} href={source.url} target="_blank" rel="noreferrer">↗ {source.label}</a>)}</div>}
       </article>)}</div>}
       {hasMore && <button className="load-more" disabled={loading} onClick={() => void load(page + 1, true)}>{loading ? "Загружаем…" : "Показать ещё"}</button>}
     </section>
+    {editingRecord && <DirectoryEditModal record={editingRecord} onClose={() => setEditingRecord(null)} onSaved={load} />}
   </>;
 }
