@@ -40,7 +40,9 @@ function renderLinkedContent(entry: LogEntry, text: string, openRecord: (kind: "
   });
 }
 
-export default function LogsClient() {
+type ContextFilter = { kind: "person" | "project"; id: string };
+
+export default function LogsClient({ context, showComposer = true }: { context?: ContextFilter; showComposer?: boolean }) {
   const [people, setPeople] = useState<Person[]>([]); const [projects, setProjects] = useState<Project[]>([]);
   const [entries, setEntries] = useState<LogEntry[]>([]); const [page, setPage] = useState(1); const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null);
@@ -50,12 +52,16 @@ export default function LogsClient() {
   const [sources, setSources] = useState<SourceDraft[]>([]); const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [editingRecord, setEditingRecord] = useState<Person | Project | null>(null);
+  const [filterQuery, setFilterQuery] = useState("");
+  const [filterTypes, setFilterTypes] = useState<string[]>([]); const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
+  const [filterPeople, setFilterPeople] = useState<string[]>([]); const [filterProjects, setFilterProjects] = useState<string[]>([]);
+  const [filterFrom, setFilterFrom] = useState(""); const [filterTo, setFilterTo] = useState("");
 
-  const load = useCallback(async (nextPage = 1, append = false) => {
+  const load = useCallback(async (nextPage = 1, append = false, query = "") => {
     setLoading(true); setError(null);
     try {
       const [logsResult, peopleResult, projectsResult] = await Promise.all([
-        api<{ entries: LogEntry[]; hasMore: boolean }>(`/api/logs?page=${nextPage}`),
+        api<{ entries: LogEntry[]; hasMore: boolean }>(`/api/logs?${query}${query ? "&" : ""}page=${nextPage}`),
         api<{ people: Person[] }>("/api/people"), api<{ projects: Project[] }>("/api/projects"),
       ]);
       setEntries((current) => append ? [...current, ...logsResult.entries] : logsResult.entries);
@@ -64,7 +70,27 @@ export default function LogsClient() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { const frame = requestAnimationFrame(() => { void load(); }); return () => cancelAnimationFrame(frame); }, [load]);
+  useEffect(() => { const frame = requestAnimationFrame(() => {
+    const params = new URLSearchParams(window.location.search); const initialPage = Math.max(1, Number(params.get("page") ?? "1") || 1);
+    if (context) params.set(context.kind, context.id); params.delete("page");
+    const values = (key: string) => params.getAll(key).flatMap((value) => value.split(",")).filter(Boolean);
+    setFilterTypes(values("type")); setFilterStatuses(values("status")); setFilterPeople(values("person")); setFilterProjects(values("project")); setFilterFrom(params.get("from") ?? ""); setFilterTo(params.get("to") ?? "");
+    const query = params.toString(); setFilterQuery(query); void load(initialPage, false, query);
+  }); return () => cancelAnimationFrame(frame); }, [context, load]);
+
+  function applyFilters() {
+    const params = new URLSearchParams();
+    filterTypes.forEach((value) => params.append("type", value)); filterStatuses.forEach((value) => params.append("status", value));
+    filterPeople.forEach((value) => params.append("person", value)); filterProjects.forEach((value) => params.append("project", value));
+    if (context) { params.delete(context.kind); params.set(context.kind, context.id); }
+    if (filterFrom) params.set("from", filterFrom); if (filterTo) params.set("to", filterTo);
+    const query = params.toString(); setFilterQuery(query); window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`); void load(1, false, query);
+  }
+
+  function resetFilters() {
+    setFilterTypes([]); setFilterStatuses([]); setFilterPeople(context?.kind === "person" ? [context.id] : []); setFilterProjects(context?.kind === "project" ? [context.id] : []); setFilterFrom(""); setFilterTo("");
+    const params = new URLSearchParams(); if (context) params.set(context.kind, context.id); const query = params.toString(); setFilterQuery(query); window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`); void load(1, false, query);
+  }
 
   const mentionMatch = content.match(/(?:^|\s)([@#])([a-zA-Z0-9._-]*)$/);
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -108,7 +134,7 @@ export default function LogsClient() {
     const payload = { type, content, description, occurredAt, status: type === "task" ? status : type === "question" ? status : null, assigneeId: type === "task" ? assigneeId || null : null, dueDate: type === "task" ? dueDate || null : null, ...ids, sources: sources.filter((source) => source.label.trim() || source.url.trim()).map(({ label, url }) => ({ label, url })) };
     try {
       await api(editingId ? `/api/logs/${editingId}` : "/api/logs", { method: editingId ? "PATCH" : "POST", body: JSON.stringify(payload) });
-      resetComposer(); await load();
+      resetComposer(); await load(1, false, filterQuery);
     } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить. Черновик оставлен в composer."); }
     finally { setSaving(false); }
   }
@@ -124,7 +150,7 @@ export default function LogsClient() {
   async function remove(entry: LogEntry) {
     setMenuId(null);
     if (!window.confirm("Удалить запись? Она исчезнет из всех будущих представлений.")) return;
-    try { await api(`/api/logs/${entry.id}`, { method: "DELETE" }); await load(); }
+    try { await api(`/api/logs/${entry.id}`, { method: "DELETE" }); await load(1, false, filterQuery); }
     catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Не удалось удалить запись"); }
   }
 
@@ -132,7 +158,7 @@ export default function LogsClient() {
   const openRecord = (kind: "person" | "project", id: string) => setEditingRecord(kind === "person" ? people.find((person) => person.id === id) ?? null : projects.find((project) => project.id === id) ?? null);
 
   return <>
-    <section className="composer-card">
+    {showComposer && <section className="composer-card">
       <div className="composer-heading"><div><p className="eyebrow">{editingId ? "Редактирование" : "Новая запись"}</p><h2>{editingId ? "Обновить контекст" : "Зафиксировать событие"}</h2></div>{editingId && <button className="secondary-button" type="button" onClick={resetComposer}>Отмена</button>}</div>
       {error && <div className="error-banner" role="alert">{error}<button onClick={() => setError(null)} aria-label="Закрыть">×</button></div>}
       <form onSubmit={save}>
@@ -144,10 +170,17 @@ export default function LogsClient() {
         <div className="sources-editor"><div className="sources-heading"><span>Sources</span><button type="button" onClick={() => setSources((current) => [...current, { key: crypto.randomUUID(), label: "", url: "" }])}>+ Добавить ссылку</button></div>{sources.map((source) => <div className="source-row" key={source.key}><input aria-label="Название источника" placeholder="Slack thread" value={source.label} onChange={(event) => setSources((current) => current.map((item) => item.key === source.key ? { ...item, label: event.target.value } : item))} /><input aria-label="URL источника" type="url" placeholder="https://…" value={source.url} onChange={(event) => setSources((current) => current.map((item) => item.key === source.key ? { ...item, url: event.target.value } : item))} /><button type="button" aria-label="Удалить источник" onClick={() => setSources((current) => current.filter((item) => item.key !== source.key))}>×</button></div>)}</div>
         <div className="composer-footer"><span>{content.length} / 5000</span><button className="primary-button" disabled={saving} type="submit">{saving ? "Сохраняем…" : editingId ? "Сохранить изменения" : "Добавить в журнал"}</button></div>
       </form>
-    </section>
+    </section>}
 
     <section className="journal-section"><div className="journal-heading"><div><p className="eyebrow">All logs</p><h2>Обратная хронология</h2></div><span className="counter">{entries.length} записей</span></div>
-      {loading && entries.length === 0 ? <div className="state-card">Загружаем журнал…</div> : entries.length === 0 ? <div className="state-card"><strong>Журнал пока пуст</strong><p>Создайте первую Decision, Task или Question — запись останется доступной после перезагрузки.</p></div> : <div className="log-list">{entries.map((entry) => <article className={`log-card ${entry.type}`} key={entry.id}>
+      <details className="filters-panel"><summary>Фильтры <span>AND между группами · OR внутри группы</span></summary><div className="filters-grid">
+        <fieldset><legend>Тип</legend>{[["decision","Decision"],["task","Task"],["question","Question"]].map(([value,label]) => <label key={value}><input type="checkbox" checked={filterTypes.includes(value)} onChange={(event) => setFilterTypes((current) => event.target.checked ? [...current, value] : current.filter((item) => item !== value))} />{label}</label>)}</fieldset>
+        <fieldset><legend>Статус</legend>{["open","unassigned","done","cancelled","resolved"].map((value) => <label key={value}><input type="checkbox" checked={filterStatuses.includes(value)} onChange={(event) => setFilterStatuses((current) => event.target.checked ? [...current, value] : current.filter((item) => item !== value))} />{value}</label>)}</fieldset>
+        {!context || context.kind !== "person" ? <label>Люди<select multiple value={filterPeople} onChange={(event) => setFilterPeople(Array.from(event.target.selectedOptions, (option) => option.value))}>{people.map((person) => <option key={person.id} value={person.id}>{person.displayName}</option>)}</select></label> : null}
+        {!context || context.kind !== "project" ? <label>Проекты<select multiple value={filterProjects} onChange={(event) => setFilterProjects(Array.from(event.target.selectedOptions, (option) => option.value))}>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label> : null}
+        <label>С даты<input type="date" value={filterFrom} onChange={(event) => setFilterFrom(event.target.value)} /></label><label>По дату<input type="date" value={filterTo} onChange={(event) => setFilterTo(event.target.value)} /></label>
+      </div><div className="filter-actions"><button type="button" className="secondary-button" onClick={resetFilters}>Сбросить</button><button type="button" className="primary-button" onClick={applyFilters}>Применить</button></div></details>
+      {loading && entries.length === 0 ? <div className="state-card">Загружаем журнал…</div> : entries.length === 0 ? <div className="state-card"><strong>{filterQuery || context ? "Ничего не найдено" : "Журнал пока пуст"}</strong><p>{filterQuery || context ? "Измените или сбросьте условия фильтра." : "Создайте первую Decision, Task или Question — запись останется доступной после перезагрузки."}</p></div> : <div className="log-list">{entries.map((entry) => <article className={`log-card ${entry.type}`} key={entry.id}>
         <div className="log-meta"><span className={`type-pill ${entry.type}`}>{typeLabel(entry.type)}</span><time>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Tallinn" }).format(new Date(entry.occurredAt))}</time>{entry.updatedAt !== entry.createdAt && <span className="updated-mark" title={`Изменено ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${entry.updatedAt.replace(" ", "T")}Z`))}`}>↻</span>}{entry.status && <span className="log-status">{entry.status}</span>}</div>
         <button className="log-menu-trigger" aria-label="Действия с записью" aria-haspopup="menu" aria-expanded={menuId === entry.id} onClick={() => setMenuId((current) => current === entry.id ? null : entry.id)}>⋯</button>
         {menuId === entry.id && <div className="log-menu" role="menu"><button role="menuitem" onClick={() => edit(entry)}>Изменить</button><button role="menuitem" className="danger" onClick={() => void remove(entry)}>Удалить</button></div>}
@@ -156,8 +189,8 @@ export default function LogsClient() {
         {entry.type === "task" && (entry.assigneeId || entry.dueDate) && <div className="task-detail">{entry.assigneeId && <span>Assignee: {assigneeName(entry.assigneeId) ?? "Unknown"}</span>}{entry.dueDate && <span>Due: {entry.dueDate}</span>}</div>}
         {entry.sources.length > 0 && <div className="source-links">{entry.sources.map((source) => <a key={source.id ?? source.url} href={source.url} target="_blank" rel="noreferrer">↗ {source.label}</a>)}</div>}
       </article>)}</div>}
-      {hasMore && <button className="load-more" disabled={loading} onClick={() => void load(page + 1, true)}>{loading ? "Загружаем…" : "Показать ещё"}</button>}
+      {hasMore && <button className="load-more" disabled={loading} onClick={() => { const nextPage = page + 1; const params = new URLSearchParams(filterQuery); params.set("page", String(nextPage)); window.history.replaceState(null, "", `${window.location.pathname}?${params}`); void load(nextPage, true, filterQuery); }}>{loading ? "Загружаем…" : "Показать ещё"}</button>}
     </section>
-    {editingRecord && <DirectoryEditModal record={editingRecord} onClose={() => setEditingRecord(null)} onSaved={load} />}
+    {editingRecord && <DirectoryEditModal record={editingRecord} onClose={() => setEditingRecord(null)} onSaved={() => load(1, false, filterQuery)} />}
   </>;
 }

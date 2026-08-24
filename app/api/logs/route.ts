@@ -3,14 +3,24 @@ import type { LogPayload } from "../../log-domain";
 import { validateLogPayload } from "../../log-domain";
 import { getLogById, hydrateLogs } from "./log-storage";
 import { resolveMentionIds } from "./mention-resolution";
+import { parseLogFilters } from "./log-filters";
 
 export async function GET(request: Request) {
   const db = getDirectoryDb(); await ensureDirectorySchema(db);
-  const page = Math.max(1, Number(new URL(request.url).searchParams.get("page") ?? "1") || 1);
+  const params = new URL(request.url).searchParams; const filters = parseLogFilters(params);
+  const page = Math.max(1, Number(params.get("page") ?? "1") || 1);
   const limit = 20; const offset = (page - 1) * limit;
+  const where: string[] = []; const values: unknown[] = [];
+  const inGroup = (column: string, items: string[]) => { if (items.length) { where.push(`${column} IN (${items.map(() => "?").join(",")})`); values.push(...items); } };
+  inGroup("le.type", filters.types); inGroup("le.status", filters.statuses);
+  if (filters.personIds.length) { where.push(`EXISTS (SELECT 1 FROM log_people lp WHERE lp.log_id = le.id AND lp.person_id IN (${filters.personIds.map(() => "?").join(",")}))`); values.push(...filters.personIds); }
+  if (filters.projectIds.length) { where.push(`EXISTS (SELECT 1 FROM log_projects lp WHERE lp.log_id = le.id AND lp.project_id IN (${filters.projectIds.map(() => "?").join(",")}))`); values.push(...filters.projectIds); }
+  if (filters.fromIso) { where.push("le.occurred_at >= ?"); values.push(filters.fromIso); }
+  if (filters.toIsoExclusive) { where.push("le.occurred_at < ?"); values.push(filters.toIsoExclusive); }
+  const predicate = where.length ? `WHERE ${where.join(" AND ")}` : "";
   const result = await db.prepare(`SELECT id, type, content, description, occurred_at AS occurredAt, status,
     assignee_id AS assigneeId, due_date AS dueDate, created_at AS createdAt, updated_at AS updatedAt
-    FROM log_entries ORDER BY occurred_at DESC, id DESC LIMIT ? OFFSET ?`).bind(limit + 1, offset).all();
+    FROM log_entries le ${predicate} ORDER BY occurred_at DESC, id DESC LIMIT ? OFFSET ?`).bind(...values, limit + 1, offset).all();
   const rows = result.results.slice(0, limit) as never[];
   return Response.json({ entries: await hydrateLogs(db, rows), page, hasMore: result.results.length > limit });
 }

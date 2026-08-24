@@ -1,6 +1,13 @@
 import { ensureDirectorySchema, getDirectoryDb } from "../../../../db/directory";
 import { isUniqueViolation, normalizeHandle, validateHandle } from "../../../directory-domain";
 
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params; const db = getDirectoryDb(); await ensureDirectorySchema(db);
+  const project = await db.prepare(`SELECT id, name, slug, note, status, created_at AS createdAt,
+    updated_at AS updatedAt, archived_at AS archivedAt FROM projects WHERE id = ?`).bind(id).first();
+  return project ? Response.json({ project }) : Response.json({ error: "Проект не найден" }, { status: 404 });
+}
+
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   const payload = (await request.json()) as { name?: string; slug?: string; note?: string; status?: "active" | "archived" };

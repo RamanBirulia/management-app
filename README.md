@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Stage 2 — MVP Composer & Journal завершён.** Приложение поддерживает первый ежедневный сценарий:
+**Stage 3 — Filters & Context Pages завершён. MVP complete.** Приложение поддерживает ежедневную фиксацию и восстановление контекста:
 
 - frontend на React/TypeScript;
 - Node.js/Fastify API с `/health/live`, `/health/ready` и `/api/meta`;
@@ -21,8 +21,10 @@
 - `@people`/`#projects` autocomplete и структурированные связи;
 - source-ссылки, assignee, due date и type-specific statuses;
 - редактирование, подтверждаемое удаление и пагинация.
+- shareable-фильтры по типу, статусу, людям, проектам и периоду;
+- контекстные страницы людей и проектов на основе единого журнала.
 
-Следующий продуктовый этап — **Stage 3: фильтры и контекстные страницы**.
+Следующий продуктовый этап — **Release 4: Daily и Weekly views**.
 
 ## Документация
 
@@ -32,6 +34,7 @@
 - [Отчёт о Stage 1](docs/stage-1-people-projects.md)
 - [ADR-001: D1 для Sites runtime](docs/decisions/001-sites-d1-runtime.md)
 - [Отчёт о Stage 2](docs/stage-2-composer-journal.md)
+- [Отчёт о Stage 3](docs/stage-3-filters-context.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.
 

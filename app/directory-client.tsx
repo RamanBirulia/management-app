@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import Link from "next/link";
 import DirectoryEditModal from "./directory-edit-modal";
 import type { Person, Project } from "./directory-domain";
 import { generatePersonAlias, generateProjectSlug } from "./directory-domain";
@@ -91,7 +92,7 @@ export default function DirectoryClient() {
         {loading ? <div className="state-card">Загружаем записи…</div> : records.length === 0 ? <div className="state-card"><strong>{tab === "people" ? "Добавьте первого человека" : "Добавьте первый проект"}</strong><p>Стабильный идентификатор будет использоваться в будущих упоминаниях.</p></div> : <div className="record-list">
           {records.map((record) => { const isPerson = "displayName" in record; const name = isPerson ? record.displayName : record.name; const handle = isPerson ? `@${record.alias}` : `#${record.slug}`; return <article className={`record-card ${record.status}`} key={record.id}>
             <div className="record-avatar" aria-hidden="true">{name.slice(0, 2).toUpperCase()}</div>
-            <div className="record-main"><div className="record-title"><strong>{name}</strong>{record.status === "archived" && <span className="archived-label">архив</span>}</div><span className="handle">{handle}</span></div>
+            <div className="record-main"><div className="record-title"><Link href={`/${isPerson ? "people" : "projects"}/${record.id}`}>{name}</Link>{record.status === "archived" && <span className="archived-label">архив</span>}</div><span className="handle">{handle}</span></div>
             <div className="record-actions"><button onClick={() => setEditing(record)}>Изменить</button><button onClick={() => void changeStatus(record)}>{record.status === "active" ? "В архив" : "Вернуть"}</button></div>
             {record.note && <div className="record-note"><ReactMarkdown components={{ a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer">{children}</a> }}>{record.note}</ReactMarkdown></div>}
           </article>; })}
