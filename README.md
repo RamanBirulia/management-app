@@ -28,7 +28,7 @@
 - последнее время и ответственный за Done/Resolved;
 - фильтрация по диапазону дат завершения.
 
-Следующий продуктовый этап — **Release 4.2: Teams & membership**, после которого продолжается исходный Release 5 с Work Items.
+Следующий продуктовый этап — **Release 4.2: Teams & membership**. После исходного Release 5 с Work Items запланирован **Release 5.1: Reviewable Imports & Jira Intake** — AI и внешние системы создают только предложения, которые пользователь явно подтверждает или отклоняет.
 
 ## Документация
 
@@ -41,6 +41,7 @@
 - [Отчёт о Stage 3](docs/stage-3-filters-context.md)
 - [Отчёт о Release 4](docs/release-4-daily-weekly.md)
 - [Roadmap Addendum: Teams & Completion Facts](docs/roadmap-addendum-teams-completion.md)
+- [Roadmap Addendum: Reviewable Imports & Jira Intake](docs/roadmap-addendum-reviewable-imports.md)
 - [Отчёт о Release 4.1](docs/release-4.1-completion-facts.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.

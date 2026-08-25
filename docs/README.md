@@ -12,7 +12,8 @@
 6. [Release 4 — Daily & Weekly Views](release-4-daily-weekly.md) — дневной timeline и недельный обзор по проектам.
 7. [Roadmap Addendum — Teams & Completion Facts](roadmap-addendum-teams-completion.md) — запланированные Release 4.1 и 4.2 перед Work Items.
 8. [Release 4.1 — Completion Facts](release-4.1-completion-facts.md) — последнее завершение Task/Question и ответственный Person.
-9. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
+9. [Roadmap Addendum — Reviewable Imports & Jira Intake](roadmap-addendum-reviewable-imports.md) — безопасный импорт AI-предложений, транскриптов и задач Jira с обязательным подтверждением.
+10. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
 
 ## Иерархия источников
 
