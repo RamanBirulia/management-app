@@ -37,4 +37,4 @@
 
 ## Следующий этап
 
-Release 5 — универсальные Work Items и дерево проекта.
+Release 4.1 — completion facts для Task и Question, затем Release 4.2 — Teams & membership. После них продолжается исходный Release 5 — Work Items.

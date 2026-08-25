@@ -26,7 +26,7 @@
 - Daily timeline с навигацией по дням;
 - Weekly review с группировкой по проектам и уникальным total.
 
-Следующий продуктовый этап — **Release 5: универсальные Work Items и дерево проекта**.
+Следующий продуктовый этап — **Release 4.1: Completion facts для Task и Question**. Затем запланирован **Release 4.2: Teams & membership**, после которого продолжается исходный Release 5 с Work Items.
 
 ## Документация
 
@@ -38,6 +38,7 @@
 - [Отчёт о Stage 2](docs/stage-2-composer-journal.md)
 - [Отчёт о Stage 3](docs/stage-3-filters-context.md)
 - [Отчёт о Release 4](docs/release-4-daily-weekly.md)
+- [Roadmap Addendum: Teams & Completion Facts](docs/roadmap-addendum-teams-completion.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.
 
