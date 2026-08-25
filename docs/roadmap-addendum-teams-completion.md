@@ -88,7 +88,11 @@
 3. Release 5 — Work Items и дерево проекта из Product Vision V1.
 4. Release 5.1 — Reviewable Imports & Jira Intake.
 5. Release 5.2 — Context Export.
-6. Последующие релизы Product Vision продолжаются без перенумерации.
+6. Release 6 — единый cross-project priority и planning health.
+7. Release 7 — Sprint settings и представления List / Sprints.
+8. Последующие релизы Product Vision продолжаются без перенумерации.
+
+Модель Release 5–7 уточнена в [Cross-functional Priority & Sprint Planning](roadmap-addendum-priority-sprint-planning.md).
 
 ## Не входит
 

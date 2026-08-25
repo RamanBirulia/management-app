@@ -14,7 +14,8 @@
 8. [Release 4.1 — Completion Facts](release-4.1-completion-facts.md) — последнее завершение Task/Question и ответственный Person.
 9. [Roadmap Addendum — Reviewable Imports & Jira Intake](roadmap-addendum-reviewable-imports.md) — безопасный импорт AI-предложений, транскриптов и задач Jira с обязательным подтверждением.
 10. [Roadmap Addendum — Context Export](roadmap-addendum-context-export.md) — экспорт текущей выборки в plain text для анализа, принятия решений и планирования.
-11. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
+11. [Roadmap Addendum — Cross-functional Priority & Sprint Planning](roadmap-addendum-priority-sprint-planning.md) — уточнённая модель Work Items, общего приоритета, стадий и sprint calendar для Release 5–7.
+12. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
 
 ## Иерархия источников
 

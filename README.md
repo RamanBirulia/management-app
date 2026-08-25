@@ -43,6 +43,7 @@
 - [Roadmap Addendum: Teams & Completion Facts](docs/roadmap-addendum-teams-completion.md)
 - [Roadmap Addendum: Reviewable Imports & Jira Intake](docs/roadmap-addendum-reviewable-imports.md)
 - [Roadmap Addendum: Context Export](docs/roadmap-addendum-context-export.md)
+- [Roadmap Addendum: Cross-functional Priority & Sprint Planning](docs/roadmap-addendum-priority-sprint-planning.md)
 - [Отчёт о Release 4.1](docs/release-4.1-completion-facts.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.
