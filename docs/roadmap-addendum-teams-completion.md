@@ -87,7 +87,8 @@
 2. Release 4.2 — Teams & membership.
 3. Release 5 — Work Items и дерево проекта из Product Vision V1.
 4. Release 5.1 — Reviewable Imports & Jira Intake.
-5. Последующие релизы Product Vision продолжаются без перенумерации.
+5. Release 5.2 — Context Export.
+6. Последующие релизы Product Vision продолжаются без перенумерации.
 
 ## Не входит
 
