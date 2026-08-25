@@ -4,6 +4,7 @@ import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useState } f
 import type { Person, Project } from "./directory-domain";
 import DirectoryEditModal from "./directory-edit-modal";
 import type { LogEntry, LogSource, LogType } from "./log-domain";
+import { addCalendarDays, currentTallinnDate, groupEntriesByProject, isoWeekRange } from "./journal-period";
 
 type SourceDraft = LogSource & { key: string };
 type Suggestion = { kind: "person" | "project"; id: string; name: string; handle: string };
@@ -31,6 +32,8 @@ function formatCompactDate(value: string | Date, includeTime = false) {
 }
 
 function formatDueDate(value: string) { return formatCompactDate(new Date(`${value}T12:00:00Z`)); }
+function dayKey(value: string) { return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Tallinn", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value)); }
+function dayTitle(value: string) { return new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Tallinn" }).format(new Date(`${value}T12:00:00Z`)); }
 
 function renderLinkedContent(entry: LogEntry, text: string, openRecord: (kind: "person" | "project", id: string) => void) {
   const peopleByAlias = new Map(entry.people.map((person) => [person.alias.toLowerCase(), person]));
@@ -51,6 +54,15 @@ function renderLinkedContent(entry: LogEntry, text: string, openRecord: (kind: "
 }
 
 type ContextFilter = { kind: "person" | "project"; id: string };
+type JournalView = "all" | "daily" | "weekly";
+
+function queryForApi(query: string) {
+  const params = new URLSearchParams(query); const view = params.get("view") as JournalView | null; const date = params.get("date") ?? currentTallinnDate();
+  params.delete("view"); params.delete("date"); params.delete("page");
+  if (view === "daily") { params.set("from", date); params.set("to", date); params.set("limit", "200"); }
+  if (view === "weekly") { const range = isoWeekRange(date); params.set("from", range.from); params.set("to", range.to); params.set("limit", "200"); }
+  return params.toString();
+}
 
 export default function LogsClient({ context, showComposer = true }: { context?: ContextFilter; showComposer?: boolean }) {
   const [people, setPeople] = useState<Person[]>([]); const [projects, setProjects] = useState<Project[]>([]);
@@ -67,12 +79,13 @@ export default function LogsClient({ context, showComposer = true }: { context?:
   const [filterTypes, setFilterTypes] = useState<string[]>([]); const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
   const [filterPeople, setFilterPeople] = useState<string[]>([]); const [filterProjects, setFilterProjects] = useState<string[]>([]);
   const [filterFrom, setFilterFrom] = useState(""); const [filterTo, setFilterTo] = useState("");
+  const [journalView, setJournalView] = useState<JournalView>("all"); const [periodDate, setPeriodDate] = useState(currentTallinnDate());
 
   const load = useCallback(async (nextPage = 1, append = false, query = "") => {
     setLoading(true); setError(null);
     try {
       const [logsResult, peopleResult, projectsResult] = await Promise.all([
-        api<{ entries: LogEntry[]; hasMore: boolean }>(`/api/logs?${query}${query ? "&" : ""}page=${nextPage}`),
+        api<{ entries: LogEntry[]; hasMore: boolean }>(`/api/logs?${queryForApi(query)}${queryForApi(query) ? "&" : ""}page=${nextPage}`),
         api<{ people: Person[] }>("/api/people"), api<{ projects: Project[] }>("/api/projects"),
       ]);
       setEntries((current) => append ? [...current, ...logsResult.entries] : logsResult.entries);
@@ -84,6 +97,8 @@ export default function LogsClient({ context, showComposer = true }: { context?:
   useEffect(() => { const frame = requestAnimationFrame(() => {
     const params = new URLSearchParams(window.location.search); const initialPage = Math.max(1, Number(params.get("page") ?? "1") || 1);
     if (context) params.set(context.kind, context.id); params.delete("page");
+    const initialView = (["daily", "weekly"].includes(params.get("view") ?? "") ? params.get("view") : "all") as JournalView; const initialDate = params.get("date") ?? currentTallinnDate();
+    setJournalView(initialView); setPeriodDate(initialDate); if (initialView !== "all") { params.set("view", initialView); params.set("date", initialDate); }
     const values = (key: string) => params.getAll(key).flatMap((value) => value.split(",")).filter(Boolean);
     setFilterTypes(values("type")); setFilterStatuses(values("status")); setFilterPeople(values("person")); setFilterProjects(values("project")); setFilterFrom(params.get("from") ?? ""); setFilterTo(params.get("to") ?? "");
     const query = params.toString(); setFilterQuery(query); void load(initialPage, false, query);
@@ -95,13 +110,23 @@ export default function LogsClient({ context, showComposer = true }: { context?:
     filterPeople.forEach((value) => params.append("person", value)); filterProjects.forEach((value) => params.append("project", value));
     if (context) { params.delete(context.kind); params.set(context.kind, context.id); }
     if (filterFrom) params.set("from", filterFrom); if (filterTo) params.set("to", filterTo);
+    if (journalView !== "all") { params.set("view", journalView); params.set("date", periodDate); params.delete("from"); params.delete("to"); }
     const query = params.toString(); setFilterQuery(query); window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`); void load(1, false, query);
   }
 
   function resetFilters() {
     setFilterTypes([]); setFilterStatuses([]); setFilterPeople(context?.kind === "person" ? [context.id] : []); setFilterProjects(context?.kind === "project" ? [context.id] : []); setFilterFrom(""); setFilterTo("");
-    const params = new URLSearchParams(); if (context) params.set(context.kind, context.id); const query = params.toString(); setFilterQuery(query); window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`); void load(1, false, query);
+    const params = new URLSearchParams(); if (context) params.set(context.kind, context.id); if (journalView !== "all") { params.set("view", journalView); params.set("date", periodDate); } const query = params.toString(); setFilterQuery(query); window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`); void load(1, false, query);
   }
+
+  function changeView(nextView: JournalView, nextDate = periodDate) {
+    const params = new URLSearchParams(filterQuery); params.delete("page"); params.delete("from"); params.delete("to");
+    if (nextView === "all") { params.delete("view"); params.delete("date"); }
+    else { params.set("view", nextView); params.set("date", nextDate); }
+    const query = params.toString(); setJournalView(nextView); setPeriodDate(nextDate); setFilterQuery(query); window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`); void load(1, false, query);
+  }
+
+  function movePeriod(direction: -1 | 0 | 1) { const base = direction === 0 ? currentTallinnDate() : addCalendarDays(periodDate, direction * (journalView === "weekly" ? 7 : 1)); changeView(journalView, base); }
 
   const mentionMatch = content.match(/(?:^|\s)([@#])([a-zA-Z0-9._-]*)$/);
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -168,6 +193,18 @@ export default function LogsClient({ context, showComposer = true }: { context?:
   const assigneeName = (id: string | null) => people.find((person) => person.id === id)?.displayName;
   const openRecord = (kind: "person" | "project", id: string) => setEditingRecord(kind === "person" ? people.find((person) => person.id === id) ?? null : projects.find((project) => project.id === id) ?? null);
   const toggleDescription = (id: string) => setExpandedDescriptions((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const weeklyGroups = groupEntriesByProject(entries);
+  const dailyGroups = [...new Set(entries.map((entry) => dayKey(entry.occurredAt)))].map((date) => ({ date, entries: entries.filter((entry) => dayKey(entry.occurredAt) === date) }));
+  const periodLabel = journalView === "daily" ? dayTitle(periodDate) : journalView === "weekly" ? (() => { const range = isoWeekRange(periodDate); return `${formatDueDate(range.from)} — ${formatDueDate(range.to)}`; })() : "";
+
+  const renderEntry = (entry: LogEntry) => <article className={`log-card ${entry.type}`} key={entry.id}>
+    <div className="log-meta"><span className="meta-item type-label">{typeLabel(entry.type)}</span><time className="meta-item">{formatCompactDate(new Date(entry.occurredAt), true)}</time>{entry.type === "task" && entry.assigneeId && <span className="meta-item">@{assigneeName(entry.assigneeId) ?? "Unknown"}</span>}{entry.type === "task" && entry.dueDate && <span className="meta-item">до {formatDueDate(entry.dueDate)}</span>}{entry.status && <span className="meta-item">{entry.status}</span>}{entry.updatedAt !== entry.createdAt && <span className="meta-item updated-mark" title={`Изменено ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${entry.updatedAt.replace(" ", "T")}Z`))}`}>↻</span>}</div>
+    <button className="log-menu-trigger" aria-label="Действия с записью" aria-haspopup="menu" aria-expanded={menuId === entry.id} onClick={() => setMenuId((current) => current === entry.id ? null : entry.id)}>⋯</button>
+    {menuId === entry.id && <div className="log-menu" role="menu"><button role="menuitem" onClick={() => edit(entry)}>Изменить</button><button role="menuitem" className="danger" onClick={() => void remove(entry)}>Удалить</button></div>}
+    <div className="log-title-line"><p className="log-content">{renderLinkedContent(entry, entry.content, openRecord)}</p>{entry.description && <button type="button" className="description-toggle" aria-label={expandedDescriptions.has(entry.id) ? "Скрыть описание" : "Показать описание"} aria-expanded={expandedDescriptions.has(entry.id)} title={expandedDescriptions.has(entry.id) ? "Скрыть описание" : "Показать описание"} onClick={() => toggleDescription(entry.id)}>›</button>}</div>
+    {entry.description && expandedDescriptions.has(entry.id) && <div className="log-description">{renderLinkedContent(entry, entry.description, openRecord)}</div>}
+    {entry.sources.length > 0 && <div className="source-links">{entry.sources.map((source) => <a key={source.id ?? source.url} href={source.url} target="_blank" rel="noreferrer">↗ {source.label}</a>)}</div>}
+  </article>;
 
   return <>
     {showComposer && <section className="composer-card">
@@ -184,22 +221,16 @@ export default function LogsClient({ context, showComposer = true }: { context?:
       </form>
     </section>}
 
-    <section className="journal-section"><div className="journal-heading"><div><p className="eyebrow">All logs</p><h2>Обратная хронология</h2></div><span className="counter">{entries.length} записей</span></div>
+    <section className="journal-section"><div className="journal-heading"><div><p className="eyebrow">Journal views</p><h2>{journalView === "all" ? "Обратная хронология" : journalView === "daily" ? "День" : "Неделя по проектам"}</h2></div><span className="counter">{entries.length} {journalView === "weekly" ? "уникальных" : "записей"}</span></div>
+      <div className="view-toolbar"><div className="view-tabs" role="tablist" aria-label="Представление журнала">{[["all","All"],["daily","Daily"],["weekly","Weekly"]].map(([value,label]) => <button key={value} role="tab" aria-selected={journalView === value} className={journalView === value ? "active" : ""} onClick={() => changeView(value as JournalView)}>{label}</button>)}</div>{journalView !== "all" && <div className="period-nav"><button aria-label="Предыдущий период" onClick={() => movePeriod(-1)}>‹</button><button className="current-period" onClick={() => movePeriod(0)}>{periodLabel}</button><button aria-label="Следующий период" onClick={() => movePeriod(1)}>›</button></div>}</div>
       <details className="filters-panel"><summary>Фильтры <span>AND между группами · OR внутри группы</span></summary><div className="filters-grid">
         <fieldset><legend>Тип</legend>{[["decision","Decision"],["task","Task"],["question","Question"]].map(([value,label]) => <label key={value}><input type="checkbox" checked={filterTypes.includes(value)} onChange={(event) => setFilterTypes((current) => event.target.checked ? [...current, value] : current.filter((item) => item !== value))} />{label}</label>)}</fieldset>
         <fieldset><legend>Статус</legend>{["open","unassigned","done","cancelled","resolved"].map((value) => <label key={value}><input type="checkbox" checked={filterStatuses.includes(value)} onChange={(event) => setFilterStatuses((current) => event.target.checked ? [...current, value] : current.filter((item) => item !== value))} />{value}</label>)}</fieldset>
         {!context || context.kind !== "person" ? <label>Люди<select multiple value={filterPeople} onChange={(event) => setFilterPeople(Array.from(event.target.selectedOptions, (option) => option.value))}>{people.map((person) => <option key={person.id} value={person.id}>{person.displayName}</option>)}</select></label> : null}
         {!context || context.kind !== "project" ? <label>Проекты<select multiple value={filterProjects} onChange={(event) => setFilterProjects(Array.from(event.target.selectedOptions, (option) => option.value))}>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label> : null}
-        <label>С даты<input type="date" value={filterFrom} onChange={(event) => setFilterFrom(event.target.value)} /></label><label>По дату<input type="date" value={filterTo} onChange={(event) => setFilterTo(event.target.value)} /></label>
+        {journalView === "all" && <><label>С даты<input type="date" value={filterFrom} onChange={(event) => setFilterFrom(event.target.value)} /></label><label>По дату<input type="date" value={filterTo} onChange={(event) => setFilterTo(event.target.value)} /></label></>}
       </div><div className="filter-actions"><button type="button" className="secondary-button" onClick={resetFilters}>Сбросить</button><button type="button" className="primary-button" onClick={applyFilters}>Применить</button></div></details>
-      {loading && entries.length === 0 ? <div className="state-card">Загружаем журнал…</div> : entries.length === 0 ? <div className="state-card"><strong>{filterQuery || context ? "Ничего не найдено" : "Журнал пока пуст"}</strong><p>{filterQuery || context ? "Измените или сбросьте условия фильтра." : "Создайте первую Decision, Task или Question — запись останется доступной после перезагрузки."}</p></div> : <div className="log-list">{entries.map((entry) => <article className={`log-card ${entry.type}`} key={entry.id}>
-        <div className="log-meta"><span className="meta-item type-label">{typeLabel(entry.type)}</span><time className="meta-item">{formatCompactDate(new Date(entry.occurredAt), true)}</time>{entry.type === "task" && entry.assigneeId && <span className="meta-item">@{assigneeName(entry.assigneeId) ?? "Unknown"}</span>}{entry.type === "task" && entry.dueDate && <span className="meta-item">до {formatDueDate(entry.dueDate)}</span>}{entry.status && <span className="meta-item">{entry.status}</span>}{entry.updatedAt !== entry.createdAt && <span className="meta-item updated-mark" title={`Изменено ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${entry.updatedAt.replace(" ", "T")}Z`))}`}>↻</span>}</div>
-        <button className="log-menu-trigger" aria-label="Действия с записью" aria-haspopup="menu" aria-expanded={menuId === entry.id} onClick={() => setMenuId((current) => current === entry.id ? null : entry.id)}>⋯</button>
-        {menuId === entry.id && <div className="log-menu" role="menu"><button role="menuitem" onClick={() => edit(entry)}>Изменить</button><button role="menuitem" className="danger" onClick={() => void remove(entry)}>Удалить</button></div>}
-        <div className="log-title-line"><p className="log-content">{renderLinkedContent(entry, entry.content, openRecord)}</p>{entry.description && <button type="button" className="description-toggle" aria-label={expandedDescriptions.has(entry.id) ? "Скрыть описание" : "Показать описание"} aria-expanded={expandedDescriptions.has(entry.id)} title={expandedDescriptions.has(entry.id) ? "Скрыть описание" : "Показать описание"} onClick={() => toggleDescription(entry.id)}>›</button>}</div>
-        {entry.description && expandedDescriptions.has(entry.id) && <div className="log-description">{renderLinkedContent(entry, entry.description, openRecord)}</div>}
-        {entry.sources.length > 0 && <div className="source-links">{entry.sources.map((source) => <a key={source.id ?? source.url} href={source.url} target="_blank" rel="noreferrer">↗ {source.label}</a>)}</div>}
-      </article>)}</div>}
+      {loading && entries.length === 0 ? <div className="state-card">Загружаем журнал…</div> : entries.length === 0 ? <div className="state-card"><strong>{filterQuery || context ? "Ничего не найдено" : "Журнал пока пуст"}</strong><p>{filterQuery || context ? "Измените период или условия фильтра." : "Создайте первую Decision, Task или Question — запись останется доступной после перезагрузки."}</p></div> : journalView === "weekly" ? <div className="weekly-groups">{weeklyGroups.map((group) => <section className="weekly-group" key={group.key}><header><div><p className="eyebrow">{group.project ? `#${group.project.slug}` : "Без проекта"}</p><h3>{group.project?.name ?? "Без проекта"}</h3></div><div className="weekly-counts"><span>D {group.counts.decision}</span><span>T {group.counts.task}</span><span>Q {group.counts.question}</span><span>Open {group.counts.open}</span></div></header><div className="log-list">{group.entries.map(renderEntry)}</div></section>)}</div> : journalView === "daily" ? <div className="daily-groups">{dailyGroups.map((group) => <section className="daily-group" key={group.date}><h3>{dayTitle(group.date)}</h3><div className="log-list">{group.entries.map(renderEntry)}</div></section>)}</div> : <div className="log-list">{entries.map(renderEntry)}</div>}
       {hasMore && <button className="load-more" disabled={loading} onClick={() => { const nextPage = page + 1; const params = new URLSearchParams(filterQuery); params.set("page", String(nextPage)); window.history.replaceState(null, "", `${window.location.pathname}?${params}`); void load(nextPage, true, filterQuery); }}>{loading ? "Загружаем…" : "Показать ещё"}</button>}
     </section>
     {editingRecord && <DirectoryEditModal record={editingRecord} onClose={() => setEditingRecord(null)} onSaved={() => load(1, false, filterQuery)} />}

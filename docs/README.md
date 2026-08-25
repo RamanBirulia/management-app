@@ -9,6 +9,7 @@
 3. [Stage 1 — People & Projects](stage-1-people-projects.md) — справочники людей и проектов, API, хранение данных и критерии приёмки.
 4. [Stage 2 — Composer & Journal](stage-2-composer-journal.md) — ежедневная фиксация Decision, Task и Question.
 5. [Stage 3 — Filters & Context Pages](stage-3-filters-context.md) — shareable-фильтры и страницы контекста человека/проекта.
+6. [Release 4 — Daily & Weekly Views](release-4-daily-weekly.md) — дневной timeline и недельный обзор по проектам.
 4. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
 5. [Stage 2 — MVP Composer & Journal](stage-2-composer-journal.md) — ежедневный composer, журнал, mentions, sources и type-specific поля.
 

@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const db = getDirectoryDb(); await ensureDirectorySchema(db);
   const params = new URL(request.url).searchParams; const filters = parseLogFilters(params);
   const page = Math.max(1, Number(params.get("page") ?? "1") || 1);
-  const limit = 20; const offset = (page - 1) * limit;
+  const limit = Math.min(200, Math.max(1, Number(params.get("limit") ?? "20") || 20)); const offset = (page - 1) * limit;
   const where: string[] = []; const values: unknown[] = [];
   const inGroup = (column: string, items: string[]) => { if (items.length) { where.push(`${column} IN (${items.map(() => "?").join(",")})`); values.push(...items); } };
   inGroup("le.type", filters.types); inGroup("le.status", filters.statuses);
