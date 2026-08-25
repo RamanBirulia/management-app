@@ -15,6 +15,10 @@ export type LogEntry = {
   status: string | null;
   assigneeId: string | null;
   dueDate: string | null;
+  completedAt: string | null;
+  completedByPersonId: string | null;
+  resolvedAt: string | null;
+  resolvedByPersonId: string | null;
   createdAt: string;
   updatedAt: string;
   people: LogPerson[];
@@ -30,6 +34,7 @@ export type LogPayload = {
   status?: string | null;
   assigneeId?: string | null;
   dueDate?: string | null;
+  completionPersonId?: string | null;
   personIds?: string[];
   projectIds?: string[];
   sources?: LogSource[];
@@ -43,6 +48,8 @@ export function validateLogPayload(payload: LogPayload) {
   if (!payload.occurredAt || Number.isNaN(Date.parse(payload.occurredAt))) return "Укажите корректные дату и время";
   if (payload.type === "task" && payload.status && !["unassigned", "open", "done", "cancelled"].includes(payload.status)) return "Некорректный статус задачи";
   if (payload.type === "question" && payload.status && !["open", "resolved"].includes(payload.status)) return "Некорректный статус вопроса";
+  if (payload.type === "task" && payload.status === "done" && !payload.completionPersonId && !payload.assigneeId) return "Укажите, кто завершил задачу";
+  if (payload.type === "question" && payload.status === "resolved" && !payload.completionPersonId) return "Укажите, кто решил вопрос";
   for (const source of payload.sources ?? []) {
     if (!source.label.trim()) return "Укажите название source-ссылки";
     try {

@@ -18,12 +18,17 @@ function tallinnStart(date: string) {
 
 export function parseLogFilters(params: URLSearchParams) {
   const from = params.get("from") ?? ""; const to = params.get("to") ?? "";
+  const completedFrom = params.get("completedFrom") ?? ""; const completedTo = params.get("completedTo") ?? "";
   const nextDay = to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? new Date(`${to}T12:00:00Z`) : null;
   if (nextDay) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  const completedNextDay = completedTo && /^\d{4}-\d{2}-\d{2}$/.test(completedTo) ? new Date(`${completedTo}T12:00:00Z`) : null;
+  if (completedNextDay) completedNextDay.setUTCDate(completedNextDay.getUTCDate() + 1);
   return {
     types: list(params, "type", LOG_TYPES), statuses: list(params, "status", LOG_STATUSES),
     personIds: list(params, "person"), projectIds: list(params, "project"), from, to,
     fromIso: from ? tallinnStart(from) : null,
     toIsoExclusive: nextDay ? tallinnStart(nextDay.toISOString().slice(0, 10)) : null,
+    completedFrom, completedTo, completedFromIso: completedFrom ? tallinnStart(completedFrom) : null,
+    completedToIsoExclusive: completedNextDay ? tallinnStart(completedNextDay.toISOString().slice(0, 10)) : null,
   };
 }

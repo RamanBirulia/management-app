@@ -44,9 +44,13 @@ export const logEntries = sqliteTable("log_entries", {
   status: text("status"),
   assigneeId: text("assignee_id"),
   dueDate: text("due_date"),
+  completedAt: text("completed_at"),
+  completedByPersonId: text("completed_by_person_id"),
+  resolvedAt: text("resolved_at"),
+  resolvedByPersonId: text("resolved_by_person_id"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => [index("idx_log_entries_occurred_at").on(table.occurredAt, table.id)]);
+}, (table) => [index("idx_log_entries_occurred_at").on(table.occurredAt, table.id), index("idx_log_entries_completed_at").on(table.completedAt), index("idx_log_entries_resolved_at").on(table.resolvedAt)]);
 
 export const logPeople = sqliteTable("log_people", {
   logId: text("log_id").notNull(),

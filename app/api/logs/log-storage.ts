@@ -27,7 +27,8 @@ export async function hydrateLogs(db: D1Database, rows: LogRow[]): Promise<LogEn
 
 export async function getLogById(db: D1Database, id: string) {
   const row = await db.prepare(`SELECT id, type, content, description, occurred_at AS occurredAt, status,
-    assignee_id AS assigneeId, due_date AS dueDate, created_at AS createdAt, updated_at AS updatedAt
+    assignee_id AS assigneeId, due_date AS dueDate, completed_at AS completedAt, completed_by_person_id AS completedByPersonId,
+    resolved_at AS resolvedAt, resolved_by_person_id AS resolvedByPersonId, created_at AS createdAt, updated_at AS updatedAt
     FROM log_entries WHERE id = ?`).bind(id).first<LogRow>();
   if (!row) return null;
   const [entry] = await hydrateLogs(db, [row]);

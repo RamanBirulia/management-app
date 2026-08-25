@@ -8,8 +8,9 @@ describe("log filters", () => {
   });
 
   it("creates Tallinn date boundaries including daylight saving time", () => {
-    const summer = parseLogFilters(new URLSearchParams("from=2026-08-24&to=2026-08-24"));
+    const summer = parseLogFilters(new URLSearchParams("from=2026-08-24&to=2026-08-24&completedFrom=2026-08-25&completedTo=2026-08-25"));
     expect(summer.fromIso).toBe("2026-08-23T21:00:00.000Z"); expect(summer.toIsoExclusive).toBe("2026-08-24T21:00:00.000Z");
+    expect(summer.completedFromIso).toBe("2026-08-24T21:00:00.000Z"); expect(summer.completedToIsoExclusive).toBe("2026-08-25T21:00:00.000Z");
     const winter = parseLogFilters(new URLSearchParams("from=2026-01-10"));
     expect(winter.fromIso).toBe("2026-01-09T22:00:00.000Z");
   });

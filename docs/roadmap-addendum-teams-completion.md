@@ -1,12 +1,12 @@
 # Roadmap Addendum — Teams & Completion Facts
 
-- Статус: **запланировано**
+- Статус: **Release 4.1 завершён; Release 4.2 запланирован**
 - Основание: наблюдения после Release 4
 - Положение в roadmap: два коротких этапа перед исходным Release 5 (Work Items)
 
 Этот addendum расширяет Product Vision V1, не изменяя scope уже завершённых этапов. Исходный Release 5 начинается после двух этапов ниже.
 
-## Release 4.1 — Completion facts для Task и Question
+## Release 4.1 — Completion facts для Task и Question — **завершён**
 
 ### Результат релиза
 

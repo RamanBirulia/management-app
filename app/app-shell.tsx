@@ -10,10 +10,10 @@ export default function AppShell({ active, eyebrow, title, description, children
         <Link className={`nav-item ${active === "directory" ? "active" : ""}`} href="/directory">Справочники</Link>
         <a className="nav-item disabled" href="#planning" aria-disabled="true">Планирование <span>позже</span></a>
       </nav>
-      <div className="sidebar-note"><span className="pulse" />Release 4 · views</div>
+      <div className="sidebar-note"><span className="pulse" />Release 4.1 · facts</div>
     </aside>
     <section className="content">
-      <header className="topbar"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="lead">{description}</p></div><div className="stage-badge"><span className="status-dot" /> Release 4</div></header>
+      <header className="topbar"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="lead">{description}</p></div><div className="stage-badge"><span className="status-dot" /> Release 4.1</div></header>
       {children}
     </section>
   </main>;

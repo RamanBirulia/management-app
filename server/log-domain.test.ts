@@ -15,7 +15,8 @@ describe("log payload validation", () => {
 
   it("validates type-specific statuses", () => {
     expect(validateLogPayload({ ...base, type: "task", status: "blocked" })).toContain("статус задачи");
-    expect(validateLogPayload({ ...base, type: "question", status: "resolved" })).toBeNull();
+    expect(validateLogPayload({ ...base, type: "question", status: "resolved", completionPersonId: "person-1" })).toBeNull();
+    expect(validateLogPayload({ ...base, type: "question", status: "resolved" })).toContain("кто решил");
   });
 
   it("accepts an optional description and limits its size", () => {

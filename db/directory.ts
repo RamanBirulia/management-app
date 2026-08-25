@@ -65,6 +65,10 @@ async function initializeSchema(db: D1Database) {
       status TEXT,
       assignee_id TEXT,
       due_date TEXT,
+      completed_at TEXT,
+      completed_by_person_id TEXT,
+      resolved_at TEXT,
+      resolved_by_person_id TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`),
@@ -94,4 +98,14 @@ async function initializeSchema(db: D1Database) {
   if (!logColumns.results.some((column) => column.name === "description")) {
     await db.prepare("ALTER TABLE log_entries ADD COLUMN description TEXT NOT NULL DEFAULT ''").run();
   }
+  for (const [column, sql] of [
+    ["completed_at", "ALTER TABLE log_entries ADD COLUMN completed_at TEXT"],
+    ["completed_by_person_id", "ALTER TABLE log_entries ADD COLUMN completed_by_person_id TEXT"],
+    ["resolved_at", "ALTER TABLE log_entries ADD COLUMN resolved_at TEXT"],
+    ["resolved_by_person_id", "ALTER TABLE log_entries ADD COLUMN resolved_by_person_id TEXT"],
+  ] as const) if (!logColumns.results.some((item) => item.name === column)) await db.prepare(sql).run();
+  await db.batch([
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_log_entries_completed_at ON log_entries(completed_at)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_log_entries_resolved_at ON log_entries(resolved_at)"),
+  ]);
 }
