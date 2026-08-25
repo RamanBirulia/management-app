@@ -22,6 +22,16 @@ function localDateTime(value = new Date()) {
 
 function typeLabel(type: LogType) { return type === "decision" ? "Decision" : type === "task" ? "Task" : "Question"; }
 
+function formatCompactDate(value: string | Date, includeTime = false) {
+  const date = value instanceof Date ? value : new Date(value);
+  const timeZone = "Europe/Tallinn";
+  const year = new Intl.DateTimeFormat("en", { year: "numeric", timeZone }).format(date);
+  const currentYear = new Intl.DateTimeFormat("en", { year: "numeric", timeZone }).format(new Date());
+  return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", ...(year !== currentYear ? { year: "numeric" } : {}), ...(includeTime ? { hour: "2-digit", minute: "2-digit" } : {}), timeZone }).format(date).replace(/\sг\./, "").replace(/\./g, "");
+}
+
+function formatDueDate(value: string) { return formatCompactDate(new Date(`${value}T12:00:00Z`)); }
+
 function renderLinkedContent(entry: LogEntry, text: string, openRecord: (kind: "person" | "project", id: string) => void) {
   const peopleByAlias = new Map(entry.people.map((person) => [person.alias.toLowerCase(), person]));
   const projectsBySlug = new Map(entry.projects.map((project) => [project.slug.toLowerCase(), project]));
@@ -52,6 +62,7 @@ export default function LogsClient({ context, showComposer = true }: { context?:
   const [sources, setSources] = useState<SourceDraft[]>([]); const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [editingRecord, setEditingRecord] = useState<Person | Project | null>(null);
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(() => new Set());
   const [filterQuery, setFilterQuery] = useState("");
   const [filterTypes, setFilterTypes] = useState<string[]>([]); const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
   const [filterPeople, setFilterPeople] = useState<string[]>([]); const [filterProjects, setFilterProjects] = useState<string[]>([]);
@@ -156,6 +167,7 @@ export default function LogsClient({ context, showComposer = true }: { context?:
 
   const assigneeName = (id: string | null) => people.find((person) => person.id === id)?.displayName;
   const openRecord = (kind: "person" | "project", id: string) => setEditingRecord(kind === "person" ? people.find((person) => person.id === id) ?? null : projects.find((project) => project.id === id) ?? null);
+  const toggleDescription = (id: string) => setExpandedDescriptions((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
 
   return <>
     {showComposer && <section className="composer-card">
@@ -181,12 +193,11 @@ export default function LogsClient({ context, showComposer = true }: { context?:
         <label>С даты<input type="date" value={filterFrom} onChange={(event) => setFilterFrom(event.target.value)} /></label><label>По дату<input type="date" value={filterTo} onChange={(event) => setFilterTo(event.target.value)} /></label>
       </div><div className="filter-actions"><button type="button" className="secondary-button" onClick={resetFilters}>Сбросить</button><button type="button" className="primary-button" onClick={applyFilters}>Применить</button></div></details>
       {loading && entries.length === 0 ? <div className="state-card">Загружаем журнал…</div> : entries.length === 0 ? <div className="state-card"><strong>{filterQuery || context ? "Ничего не найдено" : "Журнал пока пуст"}</strong><p>{filterQuery || context ? "Измените или сбросьте условия фильтра." : "Создайте первую Decision, Task или Question — запись останется доступной после перезагрузки."}</p></div> : <div className="log-list">{entries.map((entry) => <article className={`log-card ${entry.type}`} key={entry.id}>
-        <div className="log-meta"><span className={`type-pill ${entry.type}`}>{typeLabel(entry.type)}</span><time>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Tallinn" }).format(new Date(entry.occurredAt))}</time>{entry.updatedAt !== entry.createdAt && <span className="updated-mark" title={`Изменено ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${entry.updatedAt.replace(" ", "T")}Z`))}`}>↻</span>}{entry.status && <span className="log-status">{entry.status}</span>}</div>
+        <div className="log-meta"><span className="meta-item type-label">{typeLabel(entry.type)}</span><time className="meta-item">{formatCompactDate(new Date(entry.occurredAt), true)}</time>{entry.type === "task" && entry.assigneeId && <span className="meta-item">@{assigneeName(entry.assigneeId) ?? "Unknown"}</span>}{entry.type === "task" && entry.dueDate && <span className="meta-item">до {formatDueDate(entry.dueDate)}</span>}{entry.status && <span className="meta-item">{entry.status}</span>}{entry.updatedAt !== entry.createdAt && <span className="meta-item updated-mark" title={`Изменено ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${entry.updatedAt.replace(" ", "T")}Z`))}`}>↻</span>}</div>
         <button className="log-menu-trigger" aria-label="Действия с записью" aria-haspopup="menu" aria-expanded={menuId === entry.id} onClick={() => setMenuId((current) => current === entry.id ? null : entry.id)}>⋯</button>
         {menuId === entry.id && <div className="log-menu" role="menu"><button role="menuitem" onClick={() => edit(entry)}>Изменить</button><button role="menuitem" className="danger" onClick={() => void remove(entry)}>Удалить</button></div>}
-        <p className="log-content">{renderLinkedContent(entry, entry.content, openRecord)}</p>
-        {entry.description && <details className="log-description"><summary>Описание</summary><p>{renderLinkedContent(entry, entry.description, openRecord)}</p></details>}
-        {entry.type === "task" && (entry.assigneeId || entry.dueDate) && <div className="task-detail">{entry.assigneeId && <span>Assignee: {assigneeName(entry.assigneeId) ?? "Unknown"}</span>}{entry.dueDate && <span>Due: {entry.dueDate}</span>}</div>}
+        <div className="log-title-line"><p className="log-content">{renderLinkedContent(entry, entry.content, openRecord)}</p>{entry.description && <button type="button" className="description-toggle" aria-label={expandedDescriptions.has(entry.id) ? "Скрыть описание" : "Показать описание"} aria-expanded={expandedDescriptions.has(entry.id)} title={expandedDescriptions.has(entry.id) ? "Скрыть описание" : "Показать описание"} onClick={() => toggleDescription(entry.id)}>›</button>}</div>
+        {entry.description && expandedDescriptions.has(entry.id) && <div className="log-description">{renderLinkedContent(entry, entry.description, openRecord)}</div>}
         {entry.sources.length > 0 && <div className="source-links">{entry.sources.map((source) => <a key={source.id ?? source.url} href={source.url} target="_blank" rel="noreferrer">↗ {source.label}</a>)}</div>}
       </article>)}</div>}
       {hasMore && <button className="load-more" disabled={loading} onClick={() => { const nextPage = page + 1; const params = new URLSearchParams(filterQuery); params.set("page", String(nextPage)); window.history.replaceState(null, "", `${window.location.pathname}?${params}`); void load(nextPage, true, filterQuery); }}>{loading ? "Загружаем…" : "Показать ещё"}</button>}
