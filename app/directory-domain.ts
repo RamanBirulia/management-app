@@ -22,6 +22,20 @@ export type Project = {
   archivedAt: string | null;
 };
 
+export type TeamMember = Pick<Person, "id" | "displayName" | "alias" | "status">;
+
+export type Team = {
+  id: string;
+  name: string;
+  alias: string;
+  note: string;
+  status: DirectoryStatus;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  people: TeamMember[];
+};
+
 export function normalizeHandle(value: string) {
   return value.trim().replace(/^[@#]/, "").toLowerCase();
 }

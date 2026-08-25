@@ -1,13 +1,13 @@
 "use client";
 
 import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
-import type { Person, Project } from "./directory-domain";
+import type { Person, Project, Team } from "./directory-domain";
 import DirectoryEditModal from "./directory-edit-modal";
 import type { LogEntry, LogSource, LogType } from "./log-domain";
 import { addCalendarDays, currentTallinnDate, groupEntriesByProject, isoWeekRange } from "./journal-period";
 
 type SourceDraft = LogSource & { key: string };
-type Suggestion = { kind: "person" | "project"; id: string; name: string; handle: string };
+type Suggestion = { kind: "person" | "team" | "project"; id: string; name: string; handle: string };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "content-type": "application/json", ...init?.headers } });
@@ -35,8 +35,9 @@ function formatDueDate(value: string) { return formatCompactDate(new Date(`${val
 function dayKey(value: string) { return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Tallinn", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value)); }
 function dayTitle(value: string) { return new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Tallinn" }).format(new Date(`${value}T12:00:00Z`)); }
 
-function renderLinkedContent(entry: LogEntry, text: string, openRecord: (kind: "person" | "project", id: string) => void) {
+function renderLinkedContent(entry: LogEntry, text: string, openRecord: (kind: "person" | "team" | "project", id: string) => void) {
   const peopleByAlias = new Map(entry.people.map((person) => [person.alias.toLowerCase(), person]));
+  const teamsByAlias = new Map(entry.teams.map((team) => [team.alias.toLowerCase(), team]));
   const projectsBySlug = new Map(entry.projects.map((project) => [project.slug.toLowerCase(), project]));
   const parts = text.split(/([@#][a-zA-Z0-9._-]+)/g);
 
@@ -46,7 +47,9 @@ function renderLinkedContent(entry: LogEntry, text: string, openRecord: (kind: "
     const [, prefix, handle] = match;
     if (prefix === "@") {
       const person = peopleByAlias.get(handle.toLowerCase());
-      return person ? <button type="button" className="inline-mention person" title={`@${person.alias} · двойной клик для редактирования`} onDoubleClick={() => openRecord("person", person.id)} key={`${part}-${index}`}>{person.displayName}</button> : part;
+      if (person) return <button type="button" className="inline-mention person" title={`@${person.alias} · двойной клик для редактирования`} onDoubleClick={() => openRecord("person", person.id)} key={`${part}-${index}`}>{person.displayName}</button>;
+      const team = teamsByAlias.get(handle.toLowerCase());
+      return team ? <span className="team-mention-wrap" key={`${part}-${index}`}><button type="button" className="inline-mention team" title={`@${team.alias} · двойной клик для редактирования`} onDoubleClick={() => openRecord("team", team.id)}>{team.name}</button><span className="team-popover" role="tooltip"><strong>{team.name}</strong>{team.people.length ? team.people.map((member) => <span key={member.id}>@{member.alias} · {member.displayName}</span>) : <span>В команде пока нет участников</span>}</span></span> : part;
     }
     const project = projectsBySlug.get(handle.toLowerCase());
     return project ? <button type="button" className="inline-mention project" title={`#${project.slug} · двойной клик для редактирования`} onDoubleClick={() => openRecord("project", project.id)} key={`${part}-${index}`}>{project.name}</button> : part;
@@ -66,6 +69,7 @@ function queryForApi(query: string) {
 
 export default function LogsClient({ context, showComposer = true }: { context?: ContextFilter; showComposer?: boolean }) {
   const [people, setPeople] = useState<Person[]>([]); const [projects, setProjects] = useState<Project[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [entries, setEntries] = useState<LogEntry[]>([]); const [page, setPage] = useState(1); const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null); const [type, setType] = useState<LogType>("decision");
@@ -74,11 +78,12 @@ export default function LogsClient({ context, showComposer = true }: { context?:
   const [completionPersonId, setCompletionPersonId] = useState("");
   const [sources, setSources] = useState<SourceDraft[]>([]); const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [menuId, setMenuId] = useState<string | null>(null);
-  const [editingRecord, setEditingRecord] = useState<Person | Project | null>(null);
+  const [editingRecord, setEditingRecord] = useState<Person | Team | Project | null>(null);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(() => new Set());
   const [filterQuery, setFilterQuery] = useState("");
   const [filterTypes, setFilterTypes] = useState<string[]>([]); const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
   const [filterPeople, setFilterPeople] = useState<string[]>([]); const [filterProjects, setFilterProjects] = useState<string[]>([]);
+  const [filterTeams, setFilterTeams] = useState<string[]>([]);
   const [filterFrom, setFilterFrom] = useState(""); const [filterTo, setFilterTo] = useState("");
   const [completedFrom, setCompletedFrom] = useState(""); const [completedTo, setCompletedTo] = useState("");
   const [journalView, setJournalView] = useState<JournalView>("all"); const [periodDate, setPeriodDate] = useState(currentTallinnDate());
@@ -86,12 +91,12 @@ export default function LogsClient({ context, showComposer = true }: { context?:
   const load = useCallback(async (nextPage = 1, append = false, query = "") => {
     setLoading(true); setError(null);
     try {
-      const [logsResult, peopleResult, projectsResult] = await Promise.all([
+      const [logsResult, peopleResult, teamsResult, projectsResult] = await Promise.all([
         api<{ entries: LogEntry[]; hasMore: boolean }>(`/api/logs?${queryForApi(query)}${queryForApi(query) ? "&" : ""}page=${nextPage}`),
-        api<{ people: Person[] }>("/api/people"), api<{ projects: Project[] }>("/api/projects"),
+        api<{ people: Person[] }>("/api/people"), api<{ teams: Team[] }>("/api/teams"), api<{ projects: Project[] }>("/api/projects"),
       ]);
       setEntries((current) => append ? [...current, ...logsResult.entries] : logsResult.entries);
-      setPeople(peopleResult.people); setProjects(projectsResult.projects); setPage(nextPage); setHasMore(logsResult.hasMore);
+      setPeople(peopleResult.people); setTeams(teamsResult.teams); setProjects(projectsResult.projects); setPage(nextPage); setHasMore(logsResult.hasMore);
     } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "Не удалось загрузить журнал"); }
     finally { setLoading(false); }
   }, []);
@@ -102,14 +107,14 @@ export default function LogsClient({ context, showComposer = true }: { context?:
     const initialView = (["daily", "weekly"].includes(params.get("view") ?? "") ? params.get("view") : "all") as JournalView; const initialDate = params.get("date") ?? currentTallinnDate();
     setJournalView(initialView); setPeriodDate(initialDate); if (initialView !== "all") { params.set("view", initialView); params.set("date", initialDate); }
     const values = (key: string) => params.getAll(key).flatMap((value) => value.split(",")).filter(Boolean);
-    setFilterTypes(values("type")); setFilterStatuses(values("status")); setFilterPeople(values("person")); setFilterProjects(values("project")); setFilterFrom(params.get("from") ?? ""); setFilterTo(params.get("to") ?? ""); setCompletedFrom(params.get("completedFrom") ?? ""); setCompletedTo(params.get("completedTo") ?? "");
+    setFilterTypes(values("type")); setFilterStatuses(values("status")); setFilterPeople(values("person")); setFilterTeams(values("team")); setFilterProjects(values("project")); setFilterFrom(params.get("from") ?? ""); setFilterTo(params.get("to") ?? ""); setCompletedFrom(params.get("completedFrom") ?? ""); setCompletedTo(params.get("completedTo") ?? "");
     const query = params.toString(); setFilterQuery(query); void load(initialPage, false, query);
   }); return () => cancelAnimationFrame(frame); }, [context, load]);
 
   function applyFilters() {
     const params = new URLSearchParams();
     filterTypes.forEach((value) => params.append("type", value)); filterStatuses.forEach((value) => params.append("status", value));
-    filterPeople.forEach((value) => params.append("person", value)); filterProjects.forEach((value) => params.append("project", value));
+    filterPeople.forEach((value) => params.append("person", value)); filterTeams.forEach((value) => params.append("team", value)); filterProjects.forEach((value) => params.append("project", value));
     if (context) { params.delete(context.kind); params.set(context.kind, context.id); }
     if (filterFrom) params.set("from", filterFrom); if (filterTo) params.set("to", filterTo);
     if (completedFrom) params.set("completedFrom", completedFrom); if (completedTo) params.set("completedTo", completedTo);
@@ -118,7 +123,7 @@ export default function LogsClient({ context, showComposer = true }: { context?:
   }
 
   function resetFilters() {
-    setFilterTypes([]); setFilterStatuses([]); setFilterPeople(context?.kind === "person" ? [context.id] : []); setFilterProjects(context?.kind === "project" ? [context.id] : []); setFilterFrom(""); setFilterTo(""); setCompletedFrom(""); setCompletedTo("");
+    setFilterTypes([]); setFilterStatuses([]); setFilterPeople(context?.kind === "person" ? [context.id] : []); setFilterTeams([]); setFilterProjects(context?.kind === "project" ? [context.id] : []); setFilterFrom(""); setFilterTo(""); setCompletedFrom(""); setCompletedTo("");
     const params = new URLSearchParams(); if (context) params.set(context.kind, context.id); if (journalView !== "all") { params.set("view", journalView); params.set("date", periodDate); } const query = params.toString(); setFilterQuery(query); window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`); void load(1, false, query);
   }
 
@@ -136,14 +141,14 @@ export default function LogsClient({ context, showComposer = true }: { context?:
     if (!mentionMatch) return [];
     const query = mentionMatch[2].toLowerCase();
     return mentionMatch[1] === "@"
-      ? people.filter((person) => person.alias.includes(query)).slice(0, 6).map((person) => ({ kind: "person", id: person.id, name: person.displayName, handle: person.alias }))
+      ? [...people.filter((person) => person.alias.includes(query)).map((person) => ({ kind: "person" as const, id: person.id, name: person.displayName, handle: person.alias })), ...teams.filter((team) => team.alias.includes(query)).map((team) => ({ kind: "team" as const, id: team.id, name: team.name, handle: team.alias }))].slice(0, 6)
       : projects.filter((project) => project.slug.includes(query)).slice(0, 6).map((project) => ({ kind: "project", id: project.id, name: project.name, handle: project.slug }));
-  }, [mentionMatch, people, projects]);
+  }, [mentionMatch, people, teams, projects]);
 
   function chooseSuggestion(suggestion: Suggestion) {
     if (!mentionMatch) return;
     const start = content.length - mentionMatch[2].length - 1;
-    setContent(`${content.slice(0, start)}${suggestion.kind === "person" ? "@" : "#"}${suggestion.handle} `);
+    setContent(`${content.slice(0, start)}${suggestion.kind === "project" ? "#" : "@"}${suggestion.handle} `);
     setSuggestionIndex(0);
   }
 
@@ -159,6 +164,7 @@ export default function LogsClient({ context, showComposer = true }: { context?:
     const tokens = new Set(`${content}\n${description}`.split(/\s+/).map((token) => token.replace(/[,:;!?]+$/g, "")));
     return {
       personIds: people.filter((person) => tokens.has(`@${person.alias}`)).map((person) => person.id),
+      teamIds: teams.filter((team) => tokens.has(`@${team.alias}`)).map((team) => team.id),
       projectIds: projects.filter((project) => tokens.has(`#${project.slug}`)).map((project) => project.id),
     };
   }
@@ -195,7 +201,7 @@ export default function LogsClient({ context, showComposer = true }: { context?:
   }
 
   const assigneeName = (id: string | null) => people.find((person) => person.id === id)?.displayName;
-  const openRecord = (kind: "person" | "project", id: string) => setEditingRecord(kind === "person" ? people.find((person) => person.id === id) ?? null : projects.find((project) => project.id === id) ?? null);
+  const openRecord = (kind: "person" | "team" | "project", id: string) => setEditingRecord(kind === "person" ? people.find((person) => person.id === id) ?? null : kind === "team" ? teams.find((team) => team.id === id) ?? null : projects.find((project) => project.id === id) ?? null);
   const toggleDescription = (id: string) => setExpandedDescriptions((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const weeklyGroups = groupEntriesByProject(entries);
   const dailyGroups = [...new Set(entries.map((entry) => dayKey(entry.occurredAt)))].map((date) => ({ date, entries: entries.filter((entry) => dayKey(entry.occurredAt) === date) }));
@@ -216,7 +222,7 @@ export default function LogsClient({ context, showComposer = true }: { context?:
       {error && <div className="error-banner" role="alert">{error}<button onClick={() => setError(null)} aria-label="Закрыть">×</button></div>}
       <form onSubmit={save}>
         <div className="composer-row"><label>Тип<select value={type} onChange={(event) => { const next = event.target.value as LogType; setType(next); setStatus(next === "task" ? "unassigned" : "open"); setCompletionPersonId(""); }}><option value="decision">Decision</option><option value="task">Task</option><option value="question">Question</option></select></label><label>Когда<input type="datetime-local" value={occurredAt} onChange={(event) => setOccurredAt(event.target.value)} required /></label></div>
-        <label>Заголовок <span className="field-hint">Короткая формулировка; @ — человек, # — проект</span><div className="composer-input-wrap"><textarea className="composer-text" value={content} onChange={(event) => { setContent(event.target.value); setSuggestionIndex(0); }} onKeyDown={handleComposerKey} maxLength={5000} required rows={3} placeholder="Объединить команды @core и @platform в рамках #quotes" />{suggestions.length > 0 && <div className="mention-menu" role="listbox">{suggestions.map((suggestion, index) => <button type="button" role="option" aria-selected={index === suggestionIndex} className={index === suggestionIndex ? "selected" : ""} key={`${suggestion.kind}-${suggestion.id}`} onMouseDown={(event) => { event.preventDefault(); chooseSuggestion(suggestion); }}><span>{suggestion.kind === "person" ? "@" : "#"}{suggestion.handle}</span><small>{suggestion.name}</small></button>)}</div>}</div></label>
+        <label>Заголовок <span className="field-hint">Короткая формулировка; @ — человек или команда, # — проект</span><div className="composer-input-wrap"><textarea className="composer-text" value={content} onChange={(event) => { setContent(event.target.value); setSuggestionIndex(0); }} onKeyDown={handleComposerKey} maxLength={5000} required rows={3} placeholder="Объединить команды @core и @platform в рамках #quotes" />{suggestions.length > 0 && <div className="mention-menu" role="listbox">{suggestions.map((suggestion, index) => <button type="button" role="option" aria-selected={index === suggestionIndex} className={index === suggestionIndex ? "selected" : ""} key={`${suggestion.kind}-${suggestion.id}`} onMouseDown={(event) => { event.preventDefault(); chooseSuggestion(suggestion); }}><span>{suggestion.kind === "project" ? "#" : "@"}{suggestion.handle}</span><small>{suggestion.kind === "team" ? `Команда · ${suggestion.name}` : suggestion.name}</small></button>)}</div>}</div></label>
         <label>Описание <span className="field-hint">Необязательно; подробный контекст, причины и упоминания</span><textarea className="description-input" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={20000} rows={7} placeholder="Почему приняли решение, какие варианты обсуждали и что важно учесть…" /></label>
         {type === "task" && <><div className="composer-row three"><label>Статус<select value={status} onChange={(event) => { const next = event.target.value; setStatus(next); if (next === "done") { if (!completionPersonId) setCompletionPersonId(assigneeId); } else setCompletionPersonId(""); }}><option value="unassigned">Unassigned</option><option value="open">Open</option><option value="done">Done</option><option value="cancelled">Cancelled</option></select></label><label>Assignee<select value={assigneeId} onChange={(event) => { setAssigneeId(event.target.value); if (status === "done" && !completionPersonId) setCompletionPersonId(event.target.value); }}><option value="">Не назначен</option>{people.map((person) => <option key={person.id} value={person.id}>{person.displayName}</option>)}</select></label><label>Due date<input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label></div>{status === "done" && <label className="short-field">Завершил<select required value={completionPersonId} onChange={(event) => setCompletionPersonId(event.target.value)}><option value="">Выберите человека</option>{people.map((person) => <option key={person.id} value={person.id}>{person.displayName}</option>)}</select></label>}</>}
         {type === "question" && <><label className="short-field">Статус<select value={status} onChange={(event) => { setStatus(event.target.value); if (event.target.value !== "resolved") setCompletionPersonId(""); }}><option value="open">Open</option><option value="resolved">Resolved</option></select></label>{status === "resolved" && <label className="short-field">Решил<select required value={completionPersonId} onChange={(event) => setCompletionPersonId(event.target.value)}><option value="">Выберите человека</option>{people.map((person) => <option key={person.id} value={person.id}>{person.displayName}</option>)}</select></label>}</>}
@@ -231,6 +237,7 @@ export default function LogsClient({ context, showComposer = true }: { context?:
         <fieldset><legend>Тип</legend>{[["decision","Decision"],["task","Task"],["question","Question"]].map(([value,label]) => <label key={value}><input type="checkbox" checked={filterTypes.includes(value)} onChange={(event) => setFilterTypes((current) => event.target.checked ? [...current, value] : current.filter((item) => item !== value))} />{label}</label>)}</fieldset>
         <fieldset><legend>Статус</legend>{["open","unassigned","done","cancelled","resolved"].map((value) => <label key={value}><input type="checkbox" checked={filterStatuses.includes(value)} onChange={(event) => setFilterStatuses((current) => event.target.checked ? [...current, value] : current.filter((item) => item !== value))} />{value}</label>)}</fieldset>
         {!context || context.kind !== "person" ? <label>Люди<select multiple value={filterPeople} onChange={(event) => setFilterPeople(Array.from(event.target.selectedOptions, (option) => option.value))}>{people.map((person) => <option key={person.id} value={person.id}>{person.displayName}</option>)}</select></label> : null}
+        <label>Команды<select multiple value={filterTeams} onChange={(event) => setFilterTeams(Array.from(event.target.selectedOptions, (option) => option.value))}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
         {!context || context.kind !== "project" ? <label>Проекты<select multiple value={filterProjects} onChange={(event) => setFilterProjects(Array.from(event.target.selectedOptions, (option) => option.value))}>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label> : null}
         {journalView === "all" && <><label>С даты<input type="date" value={filterFrom} onChange={(event) => setFilterFrom(event.target.value)} /></label><label>По дату<input type="date" value={filterTo} onChange={(event) => setFilterTo(event.target.value)} /></label></>}
         <label>Завершено с<input type="date" value={completedFrom} onChange={(event) => setCompletedFrom(event.target.value)} /></label><label>Завершено по<input type="date" value={completedTo} onChange={(event) => setCompletedTo(event.target.value)} /></label>
@@ -238,6 +245,6 @@ export default function LogsClient({ context, showComposer = true }: { context?:
       {loading && entries.length === 0 ? <div className="state-card">Загружаем журнал…</div> : entries.length === 0 ? <div className="state-card"><strong>{filterQuery || context ? "Ничего не найдено" : "Журнал пока пуст"}</strong><p>{filterQuery || context ? "Измените период или условия фильтра." : "Создайте первую Decision, Task или Question — запись останется доступной после перезагрузки."}</p></div> : journalView === "weekly" ? <div className="weekly-groups">{weeklyGroups.map((group) => <section className="weekly-group" key={group.key}><header><div><p className="eyebrow">{group.project ? `#${group.project.slug}` : "Без проекта"}</p><h3>{group.project?.name ?? "Без проекта"}</h3></div><div className="weekly-counts"><span>D {group.counts.decision}</span><span>T {group.counts.task}</span><span>Q {group.counts.question}</span><span>Open {group.counts.open}</span></div></header><div className="log-list">{group.entries.map(renderEntry)}</div></section>)}</div> : journalView === "daily" ? <div className="daily-groups">{dailyGroups.map((group) => <section className="daily-group" key={group.date}><h3>{dayTitle(group.date)}</h3><div className="log-list">{group.entries.map(renderEntry)}</div></section>)}</div> : <div className="log-list">{entries.map(renderEntry)}</div>}
       {hasMore && <button className="load-more" disabled={loading} onClick={() => { const nextPage = page + 1; const params = new URLSearchParams(filterQuery); params.set("page", String(nextPage)); window.history.replaceState(null, "", `${window.location.pathname}?${params}`); void load(nextPage, true, filterQuery); }}>{loading ? "Загружаем…" : "Показать ещё"}</button>}
     </section>
-    {editingRecord && <DirectoryEditModal record={editingRecord} onClose={() => setEditingRecord(null)} onSaved={() => load(1, false, filterQuery)} />}
+    {editingRecord && <DirectoryEditModal record={editingRecord} people={people} onClose={() => setEditingRecord(null)} onSaved={() => load(1, false, filterQuery)} />}
   </>;
 }

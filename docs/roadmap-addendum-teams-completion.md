@@ -1,6 +1,6 @@
 # Roadmap Addendum — Teams & Completion Facts
 
-- Статус: **Release 4.1 завершён; Release 4.2 запланирован**
+- Статус: **Release 4.1 и Release 4.2 завершены**
 - Основание: наблюдения после Release 4
 - Положение в roadmap: два коротких этапа перед исходным Release 5 (Work Items)
 
@@ -38,7 +38,7 @@
 - Повторить тот же сценарий для Question Open/Resolved.
 - Изменить текст завершённой записи: completion timestamp не меняется.
 
-## Release 4.2 — Teams, membership и `@team` mentions
+## Release 4.2 — Teams, membership и `@team` mentions — **завершён**
 
 ### Результат релиза
 

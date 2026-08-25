@@ -43,6 +43,13 @@
       "when": 1787667190174,
       "tag": "0005_closed_lady_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1787668007577,
+      "tag": "0006_broken_doctor_faustus",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { groupEntriesByProject, isoWeekRange } from "../app/journal-period";
 import type { LogEntry } from "../app/log-domain";
 
-const entry = (id: string, projects: LogEntry["projects"]): LogEntry => ({ id, type: "decision", content: id, description: "", occurredAt: "2026-08-24T08:00:00Z", status: null, assigneeId: null, dueDate: null, completedAt: null, completedByPersonId: null, resolvedAt: null, resolvedByPersonId: null, createdAt: "", updatedAt: "", people: [], projects, sources: [] });
+const entry = (id: string, projects: LogEntry["projects"]): LogEntry => ({ id, type: "decision", content: id, description: "", occurredAt: "2026-08-24T08:00:00Z", status: null, assigneeId: null, dueDate: null, completedAt: null, completedByPersonId: null, resolvedAt: null, resolvedByPersonId: null, createdAt: "", updatedAt: "", people: [], projects, teams: [], sources: [] });
 
 describe("journal periods", () => {
   it("uses ISO Monday–Sunday weeks across year boundaries", () => { expect(isoWeekRange("2027-01-01")).toEqual({ from: "2026-12-28", to: "2027-01-03" }); });

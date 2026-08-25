@@ -25,7 +25,7 @@ export function parseLogFilters(params: URLSearchParams) {
   if (completedNextDay) completedNextDay.setUTCDate(completedNextDay.getUTCDate() + 1);
   return {
     types: list(params, "type", LOG_TYPES), statuses: list(params, "status", LOG_STATUSES),
-    personIds: list(params, "person"), projectIds: list(params, "project"), from, to,
+    personIds: list(params, "person"), projectIds: list(params, "project"), teamIds: list(params, "team"), from, to,
     fromIso: from ? tallinnStart(from) : null,
     toIsoExclusive: nextDay ? tallinnStart(nextDay.toISOString().slice(0, 10)) : null,
     completedFrom, completedTo, completedFromIso: completedFrom ? tallinnStart(completedFrom) : null,

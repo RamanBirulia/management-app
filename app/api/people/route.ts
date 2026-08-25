@@ -1,5 +1,6 @@
 import { ensureDirectorySchema, getDirectoryDb } from "../../../db/directory";
 import { isUniqueViolation, normalizeHandle, validateHandle } from "../../directory-domain";
+import { aliasOwner } from "../teams/team-storage";
 
 export async function GET(request: Request) {
   const db = getDirectoryDb();
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
 
   const db = getDirectoryDb();
   await ensureDirectorySchema(db);
+  if (await aliasOwner(db, alias)) return Response.json({ error: `@${alias} уже используется человеком или командой` }, { status: 409 });
   const id = crypto.randomUUID();
   try {
     await db.prepare("INSERT INTO people (id, display_name, alias) VALUES (?, ?, ?)")

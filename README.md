@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Release 4.1 — Completion Facts завершён.** Приложение поддерживает ежедневную фиксацию, восстановление, периодический обзор и актуальный факт завершения:
+**Release 4.2 — Teams & Membership завершён.** Приложение поддерживает ежедневную фиксацию, восстановление, периодический обзор, completion facts и команды:
 
 - frontend на React/TypeScript;
 - Node.js/Fastify API с `/health/live`, `/health/ready` и `/api/meta`;
@@ -27,8 +27,11 @@
 - Weekly review с группировкой по проектам и уникальным total.
 - последнее время и ответственный за Done/Resolved;
 - фильтрация по диапазону дат завершения.
+- команды и many-to-many membership;
+- общий namespace `@` для людей и команд;
+- Team mentions с popover актуального состава.
 
-Следующий продуктовый этап — **Release 4.2: Teams & membership**. После исходного Release 5 с Work Items запланированы **Release 5.1: Reviewable Imports & Jira Intake** и **Release 5.2: Context Export**. Первый безопасно превращает внешние данные в подтверждаемые предложения, второй собирает текущую отфильтрованную выборку в plain text для анализа и планирования.
+Следующий продуктовый этап — **Release 5: универсальные Work Items и дерево проекта**. После него запланированы **Release 5.1: Reviewable Imports & Jira Intake** и **Release 5.2: Context Export**. Модель общего приоритета и Sprint planning уточнена отдельным addendum для Release 5–7.
 
 ## Документация
 
@@ -45,6 +48,7 @@
 - [Roadmap Addendum: Context Export](docs/roadmap-addendum-context-export.md)
 - [Roadmap Addendum: Cross-functional Priority & Sprint Planning](docs/roadmap-addendum-priority-sprint-planning.md)
 - [Отчёт о Release 4.1](docs/release-4.1-completion-facts.md)
+- [Отчёт о Release 4.2](docs/release-4.2-teams-membership.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.
 

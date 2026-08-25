@@ -1,5 +1,6 @@
 import { ensureDirectorySchema, getDirectoryDb } from "../../../../db/directory";
 import { isUniqueViolation, normalizeHandle, validateHandle } from "../../../directory-domain";
+import { aliasOwner } from "../../teams/team-storage";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params; const db = getDirectoryDb(); await ensureDirectorySchema(db);
@@ -25,6 +26,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (aliasError) return Response.json({ error: aliasError }, { status: 400 });
   if (status !== "active" && status !== "archived") return Response.json({ error: "Некорректный статус" }, { status: 400 });
   if (note.length > 10_000) return Response.json({ error: "Note не должен превышать 10 000 символов" }, { status: 400 });
+  if (await aliasOwner(db, alias, { kind: "person", id })) return Response.json({ error: `@${alias} уже используется человеком или командой` }, { status: 409 });
 
   try {
     await db.prepare(`UPDATE people SET display_name = ?, alias = ?, note = ?, status = ?,

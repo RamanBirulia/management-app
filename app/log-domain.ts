@@ -5,6 +5,7 @@ export type QuestionStatus = "open" | "resolved";
 export type LogSource = { id?: string; label: string; url: string };
 export type LogPerson = { id: string; displayName: string; alias: string };
 export type LogProject = { id: string; name: string; slug: string };
+export type LogTeam = { id: string; name: string; alias: string; people: LogPerson[] };
 
 export type LogEntry = {
   id: string;
@@ -23,6 +24,7 @@ export type LogEntry = {
   updatedAt: string;
   people: LogPerson[];
   projects: LogProject[];
+  teams: LogTeam[];
   sources: LogSource[];
 };
 
@@ -37,6 +39,7 @@ export type LogPayload = {
   completionPersonId?: string | null;
   personIds?: string[];
   projectIds?: string[];
+  teamIds?: string[];
   sources?: LogSource[];
 };
 

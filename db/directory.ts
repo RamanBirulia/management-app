@@ -42,6 +42,23 @@ async function initializeSchema(db: D1Database) {
       archived_at TEXT
     )`),
     db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_slug_unique ON projects(slug)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS teams (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      alias TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      archived_at TEXT
+    )`),
+    db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_teams_alias_unique ON teams(alias)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS team_people (
+      team_id TEXT NOT NULL,
+      person_id TEXT NOT NULL,
+      PRIMARY KEY (team_id, person_id)
+    )`),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_team_people_person_id ON team_people(person_id, team_id)"),
   ]);
 
   const [personColumns, projectColumns] = await Promise.all([
@@ -83,6 +100,11 @@ async function initializeSchema(db: D1Database) {
       project_id TEXT NOT NULL,
       PRIMARY KEY (log_id, project_id)
     )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS log_teams (
+      log_id TEXT NOT NULL,
+      team_id TEXT NOT NULL,
+      PRIMARY KEY (log_id, team_id)
+    )`),
     db.prepare(`CREATE TABLE IF NOT EXISTS sources (
       id TEXT PRIMARY KEY NOT NULL,
       log_id TEXT NOT NULL,
@@ -91,6 +113,7 @@ async function initializeSchema(db: D1Database) {
     )`),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_log_people_person_id ON log_people(person_id, log_id)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_log_projects_project_id ON log_projects(project_id, log_id)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_log_teams_team_id ON log_teams(team_id, log_id)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_sources_log_id ON sources(log_id)"),
   ]);
 

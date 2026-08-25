@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   inGroup("le.type", filters.types); inGroup("le.status", filters.statuses);
   if (filters.personIds.length) { where.push(`EXISTS (SELECT 1 FROM log_people lp WHERE lp.log_id = le.id AND lp.person_id IN (${filters.personIds.map(() => "?").join(",")}))`); values.push(...filters.personIds); }
   if (filters.projectIds.length) { where.push(`EXISTS (SELECT 1 FROM log_projects lp WHERE lp.log_id = le.id AND lp.project_id IN (${filters.projectIds.map(() => "?").join(",")}))`); values.push(...filters.projectIds); }
+  if (filters.teamIds.length) { where.push(`EXISTS (SELECT 1 FROM log_teams lt WHERE lt.log_id = le.id AND lt.team_id IN (${filters.teamIds.map(() => "?").join(",")}))`); values.push(...filters.teamIds); }
   if (filters.fromIso) { where.push("le.occurred_at >= ?"); values.push(filters.fromIso); }
   if (filters.toIsoExclusive) { where.push("le.occurred_at < ?"); values.push(filters.toIsoExclusive); }
   if (filters.completedFromIso) { where.push("COALESCE(le.completed_at, le.resolved_at) >= ?"); values.push(filters.completedFromIso); }
@@ -42,13 +43,14 @@ export async function POST(request: Request) {
   const { completedAt, completedByPersonId, resolvedAt, resolvedByPersonId } = resolveCompletionFacts(null, { ...payload, type, status, assigneeId });
   const terminalPersonId = completedByPersonId ?? resolvedByPersonId;
   if (terminalPersonId && !await db.prepare("SELECT id FROM people WHERE id = ? AND status = 'active'").bind(terminalPersonId).first()) return Response.json({ error: "Выбранный человек не найден или находится в архиве" }, { status: 400 });
-  const mentionIds = await resolveMentionIds(db, `${content}\n${description}`, payload.personIds, payload.projectIds);
+  const mentionIds = await resolveMentionIds(db, `${content}\n${description}`, payload.personIds, payload.projectIds, payload.teamIds);
   const statements = [db.prepare(`INSERT INTO log_entries
     (id, type, content, description, occurred_at, status, assignee_id, due_date, completed_at, completed_by_person_id, resolved_at, resolved_by_person_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(id, type, content, description, occurredAt, status, assigneeId, dueDate, completedAt, completedByPersonId, resolvedAt, resolvedByPersonId)];
   for (const personId of mentionIds.personIds) statements.push(db.prepare("INSERT INTO log_people (log_id, person_id) VALUES (?, ?)").bind(id, personId));
   for (const projectId of mentionIds.projectIds) statements.push(db.prepare("INSERT INTO log_projects (log_id, project_id) VALUES (?, ?)").bind(id, projectId));
+  for (const teamId of mentionIds.teamIds) statements.push(db.prepare("INSERT INTO log_teams (log_id, team_id) VALUES (?, ?)").bind(id, teamId));
   for (const source of payload.sources ?? []) statements.push(db.prepare("INSERT INTO sources (id, log_id, label, url) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), id, source.label.trim(), source.url.trim()));
   await db.batch(statements);
   return Response.json({ entry: await getLogById(db, id) }, { status: 201 });

@@ -35,6 +35,26 @@ export const projects = sqliteTable(
   (table) => [uniqueIndex("idx_projects_slug_unique").on(table.slug)],
 );
 
+export const teams = sqliteTable(
+  "teams",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    alias: text("alias").notNull(),
+    note: text("note").notNull().default(""),
+    status: text("status", { enum: ["active", "archived"] }).notNull().default("active"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    archivedAt: text("archived_at"),
+  },
+  (table) => [uniqueIndex("idx_teams_alias_unique").on(table.alias)],
+);
+
+export const teamPeople = sqliteTable("team_people", {
+  teamId: text("team_id").notNull(),
+  personId: text("person_id").notNull(),
+}, (table) => [primaryKey({ columns: [table.teamId, table.personId] }), index("idx_team_people_person_id").on(table.personId, table.teamId)]);
+
 export const logEntries = sqliteTable("log_entries", {
   id: text("id").primaryKey(),
   type: text("type", { enum: ["decision", "task", "question"] }).notNull(),
@@ -61,6 +81,11 @@ export const logProjects = sqliteTable("log_projects", {
   logId: text("log_id").notNull(),
   projectId: text("project_id").notNull(),
 }, (table) => [primaryKey({ columns: [table.logId, table.projectId] }), index("idx_log_projects_project_id").on(table.projectId, table.logId)]);
+
+export const logTeams = sqliteTable("log_teams", {
+  logId: text("log_id").notNull(),
+  teamId: text("team_id").notNull(),
+}, (table) => [primaryKey({ columns: [table.logId, table.teamId] }), index("idx_log_teams_team_id").on(table.teamId, table.logId)]);
 
 export const sources = sqliteTable("sources", {
   id: text("id").primaryKey(),

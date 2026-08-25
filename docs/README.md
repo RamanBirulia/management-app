@@ -12,10 +12,11 @@
 6. [Release 4 — Daily & Weekly Views](release-4-daily-weekly.md) — дневной timeline и недельный обзор по проектам.
 7. [Roadmap Addendum — Teams & Completion Facts](roadmap-addendum-teams-completion.md) — запланированные Release 4.1 и 4.2 перед Work Items.
 8. [Release 4.1 — Completion Facts](release-4.1-completion-facts.md) — последнее завершение Task/Question и ответственный Person.
-9. [Roadmap Addendum — Reviewable Imports & Jira Intake](roadmap-addendum-reviewable-imports.md) — безопасный импорт AI-предложений, транскриптов и задач Jira с обязательным подтверждением.
-10. [Roadmap Addendum — Context Export](roadmap-addendum-context-export.md) — экспорт текущей выборки в plain text для анализа, принятия решений и планирования.
-11. [Roadmap Addendum — Cross-functional Priority & Sprint Planning](roadmap-addendum-priority-sprint-planning.md) — уточнённая модель Work Items, общего приоритета, стадий и sprint calendar для Release 5–7.
-12. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
+9. [Release 4.2 — Teams & Membership](release-4.2-teams-membership.md) — команды, membership, общий `@` namespace и Team mentions.
+10. [Roadmap Addendum — Reviewable Imports & Jira Intake](roadmap-addendum-reviewable-imports.md) — безопасный импорт AI-предложений, транскриптов и задач Jira с обязательным подтверждением.
+11. [Roadmap Addendum — Context Export](roadmap-addendum-context-export.md) — экспорт текущей выборки в plain text для анализа, принятия решений и планирования.
+12. [Roadmap Addendum — Cross-functional Priority & Sprint Planning](roadmap-addendum-priority-sprint-planning.md) — уточнённая модель Work Items, общего приоритета, стадий и sprint calendar для Release 5–7.
+13. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
 
 ## Иерархия источников
 

@@ -6,24 +6,25 @@ export function extractMentionHandles(content: string): MentionHandles {
   return { people: [...new Set(people)], projects: [...new Set(projects)] };
 }
 
-async function existingHandles(db: D1Database, table: "people" | "projects", column: "alias" | "slug", handles: string[]) {
+async function existingHandles(db: D1Database, table: "people" | "teams" | "projects", column: "alias" | "slug", handles: string[]) {
   if (!handles.length) return [] as { id: string; handle: string }[];
   const placeholders = handles.map(() => "?").join(",");
   const result = await db.prepare(`SELECT id, ${column} AS handle FROM ${table} WHERE ${column} IN (${placeholders})`).bind(...handles).all<{ id: string; handle: string }>();
   return result.results;
 }
 
-export async function resolveMentionIds(db: D1Database, content: string, explicitPersonIds: string[] = [], explicitProjectIds: string[] = []) {
+export async function resolveMentionIds(db: D1Database, content: string, explicitPersonIds: string[] = [], explicitProjectIds: string[] = [], explicitTeamIds: string[] = []) {
   const handles = extractMentionHandles(content);
-  const [knownPeople, knownProjects] = await Promise.all([
-    existingHandles(db, "people", "alias", handles.people), existingHandles(db, "projects", "slug", handles.projects),
+  const [knownPeople, knownTeams, knownProjects] = await Promise.all([
+    existingHandles(db, "people", "alias", handles.people), existingHandles(db, "teams", "alias", handles.people), existingHandles(db, "projects", "slug", handles.projects),
   ]);
   const knownPeopleByHandle = new Map(knownPeople.map((item) => [item.handle, item.id]));
+  const knownTeamsByHandle = new Map(knownTeams.map((item) => [item.handle, item.id]));
   const knownProjectsByHandle = new Map(knownProjects.map((item) => [item.handle, item.id]));
   const inserts: D1PreparedStatement[] = [];
 
   for (const alias of handles.people) {
-    if (!knownPeopleByHandle.has(alias)) {
+    if (!knownPeopleByHandle.has(alias) && !knownTeamsByHandle.has(alias)) {
       const id = crypto.randomUUID(); knownPeopleByHandle.set(alias, id);
       inserts.push(db.prepare("INSERT INTO people (id, display_name, alias) VALUES (?, ?, ?)").bind(id, alias, alias));
     }
@@ -39,5 +40,6 @@ export async function resolveMentionIds(db: D1Database, content: string, explici
   return {
     personIds: [...new Set([...explicitPersonIds, ...knownPeopleByHandle.values()])],
     projectIds: [...new Set([...explicitProjectIds, ...knownProjectsByHandle.values()])],
+    teamIds: [...new Set([...explicitTeamIds, ...knownTeamsByHandle.values()])],
   };
 }

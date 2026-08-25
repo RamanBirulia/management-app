@@ -1,18 +1,24 @@
-import type { LogEntry, LogPerson, LogProject, LogSource } from "../../log-domain";
+import type { LogEntry, LogPerson, LogProject, LogSource, LogTeam } from "../../log-domain";
 
-type LogRow = Omit<LogEntry, "people" | "projects" | "sources">;
+type LogRow = Omit<LogEntry, "people" | "projects" | "teams" | "sources">;
 
 export async function hydrateLogs(db: D1Database, rows: LogRow[]): Promise<LogEntry[]> {
   if (!rows.length) return [];
   const ids = rows.map((row) => row.id);
   const placeholders = ids.map(() => "?").join(",");
-  const [peopleResult, projectsResult, sourcesResult] = await Promise.all([
+  const [peopleResult, projectsResult, teamsResult, teamPeopleResult, sourcesResult] = await Promise.all([
     db.prepare(`SELECT lp.log_id AS logId, p.id, p.display_name AS displayName, p.alias
       FROM log_people lp JOIN people p ON p.id = lp.person_id
       WHERE lp.log_id IN (${placeholders}) ORDER BY p.display_name COLLATE NOCASE`).bind(...ids).all<LogPerson & { logId: string }>(),
     db.prepare(`SELECT lp.log_id AS logId, p.id, p.name, p.slug
       FROM log_projects lp JOIN projects p ON p.id = lp.project_id
       WHERE lp.log_id IN (${placeholders}) ORDER BY p.name COLLATE NOCASE`).bind(...ids).all<LogProject & { logId: string }>(),
+    db.prepare(`SELECT lt.log_id AS logId, t.id, t.name, t.alias
+      FROM log_teams lt JOIN teams t ON t.id = lt.team_id
+      WHERE lt.log_id IN (${placeholders}) ORDER BY t.name COLLATE NOCASE`).bind(...ids).all<Omit<LogTeam, "people"> & { logId: string }>(),
+    db.prepare(`SELECT lt.log_id AS logId, lt.team_id AS teamId, p.id, p.display_name AS displayName, p.alias
+      FROM log_teams lt JOIN team_people tp ON tp.team_id = lt.team_id JOIN people p ON p.id = tp.person_id
+      WHERE lt.log_id IN (${placeholders}) AND p.status = 'active' ORDER BY p.display_name COLLATE NOCASE`).bind(...ids).all<LogPerson & { logId: string; teamId: string }>(),
     db.prepare(`SELECT log_id AS logId, id, label, url FROM sources
       WHERE log_id IN (${placeholders}) ORDER BY rowid`).bind(...ids).all<LogSource & { logId: string }>(),
   ]);
@@ -21,6 +27,7 @@ export async function hydrateLogs(db: D1Database, rows: LogRow[]): Promise<LogEn
     ...row,
     people: peopleResult.results.filter((item) => item.logId === row.id).map((item) => ({ id: item.id, displayName: item.displayName, alias: item.alias })),
     projects: projectsResult.results.filter((item) => item.logId === row.id).map((item) => ({ id: item.id, name: item.name, slug: item.slug })),
+    teams: teamsResult.results.filter((item) => item.logId === row.id).map((item) => ({ id: item.id, name: item.name, alias: item.alias, people: teamPeopleResult.results.filter((person) => person.logId === row.id && person.teamId === item.id).map((person) => ({ id: person.id, displayName: person.displayName, alias: person.alias })) })),
     sources: sourcesResult.results.filter((item) => item.logId === row.id).map((item) => ({ id: item.id, label: item.label, url: item.url })),
   }));
 }
