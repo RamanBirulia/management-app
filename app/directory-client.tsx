@@ -32,6 +32,7 @@ export default function DirectoryClient() {
   const [menuId, setMenuId] = useState<string | null>(null);
   const [addingPerson, setAddingPerson] = useState<Person | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,7 +61,7 @@ export default function DirectoryClient() {
       if (tab === "people") await api("/api/people", { method: "POST", body: JSON.stringify({ displayName: newName, alias: newHandle }) });
       else if (tab === "teams") await api("/api/teams", { method: "POST", body: JSON.stringify({ name: newName, alias: newHandle }) });
       else await api("/api/projects", { method: "POST", body: JSON.stringify({ name: newName, slug: newHandle }) });
-      setNewName(""); setNewHandle(""); setHandleEdited(false); await load();
+      setNewName(""); setNewHandle(""); setHandleEdited(false); setCreating(false); await load();
     } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить"); }
   }
 
@@ -82,7 +83,7 @@ export default function DirectoryClient() {
   }
 
   function selectTab(nextTab: Tab) {
-    setTab(nextTab); setEditing(null); setNewName(""); setNewHandle(""); setHandleEdited(false);
+    setTab(nextTab); setEditing(null); setCreating(false); setNewName(""); setNewHandle(""); setHandleEdited(false);
   }
 
   function changeNewName(value: string) {
@@ -100,7 +101,7 @@ export default function DirectoryClient() {
       <label className="archive-toggle"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> Показывать архив</label>
     </section>
 
-    <section className="directory-layout">
+    <section className="directory-layout directory-layout-compact">
       <div className="records-panel">
         <div className="panel-heading"><div><p className="eyebrow">{tab === "people" ? "People" : tab === "teams" ? "Teams" : "Projects"}</p><h2>{tab === "people" ? "Справочник людей" : tab === "teams" ? "Справочник команд" : "Справочник проектов"}</h2></div><span className="counter">{activeCount} активных</span></div>
         {error && <div className="error-banner" role="alert">{error}<button onClick={() => setError(null)} aria-label="Закрыть">×</button></div>}
@@ -114,17 +115,11 @@ export default function DirectoryClient() {
         </div>}
       </div>
 
-      <aside className="form-panel">
-        <p className="eyebrow">Новая запись</p><h2>{tab === "people" ? "Добавить человека" : tab === "teams" ? "Добавить команду" : "Добавить проект"}</h2>
-        <p className="form-intro">{tab === "projects" ? "Slug создаётся автоматически через нижнее подчёркивание и используется после #." : "Alias создаётся автоматически и используется после @."}</p>
-        <form onSubmit={saveNew}>
-          <label>{tab === "people" ? "Отображаемое имя" : tab === "teams" ? "Название команды" : "Название проекта"}<input name="name" required maxLength={100} value={newName} onChange={(event) => changeNewName(event.target.value)} placeholder={tab === "people" ? "Alex Morgan" : tab === "teams" ? "Platform Team" : "Content Editing Form"} /></label>
-          <label>{tab === "projects" ? "Slug" : "Alias"}<div className="prefixed-input"><span>{tab === "projects" ? "#" : "@"}</span><input name="handle" required minLength={2} maxLength={40} pattern={tab === "projects" ? "[A-Za-z0-9][A-Za-z0-9_-]{1,39}" : "[A-Za-z0-9][A-Za-z0-9._-]{1,39}"} value={newHandle} onChange={(event) => { setNewHandle(event.target.value.toLowerCase()); setHandleEdited(true); }} placeholder={tab === "people" ? "alex.morgan" : tab === "teams" ? "platform" : "content_editing_form"} /></div></label>
-          <button className="primary-button" type="submit">Добавить</button>
-        </form>
-        <div className="form-note"><strong>Стабильные связи</strong><p>Переименование не изменяет внутренний ID и не сломает будущие записи журнала.</p></div>
-      </aside>
     </section>
+
+    <button className="floating-add" type="button" aria-label={tab === "people" ? "Добавить человека" : tab === "teams" ? "Добавить команду" : "Добавить проект"} title={tab === "people" ? "Добавить человека" : tab === "teams" ? "Добавить команду" : "Добавить проект"} onClick={() => setCreating(true)}>+</button>
+
+    {creating && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreating(false); }}><section className="modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="create-directory-title"><div className="modal-heading"><div><p className="eyebrow">Новая запись</p><h2 id="create-directory-title">{tab === "people" ? "Добавить человека" : tab === "teams" ? "Добавить команду" : "Добавить проект"}</h2></div><button className="close-button" onClick={() => setCreating(false)} aria-label="Закрыть">×</button></div><p className="form-intro">{tab === "projects" ? "Slug создаётся автоматически через нижнее подчёркивание и используется после #." : "Alias создаётся автоматически и используется после @."}</p><form onSubmit={saveNew}><label>{tab === "people" ? "Отображаемое имя" : tab === "teams" ? "Название команды" : "Название проекта"}<input name="name" autoFocus required maxLength={100} value={newName} onChange={(event) => changeNewName(event.target.value)} placeholder={tab === "people" ? "Alex Morgan" : tab === "teams" ? "Platform Team" : "Content Editing Form"} /></label><label>{tab === "projects" ? "Slug" : "Alias"}<div className="prefixed-input"><span>{tab === "projects" ? "#" : "@"}</span><input name="handle" required minLength={2} maxLength={40} pattern={tab === "projects" ? "[A-Za-z0-9][A-Za-z0-9_-]{1,39}" : "[A-Za-z0-9][A-Za-z0-9._-]{1,39}"} value={newHandle} onChange={(event) => { setNewHandle(event.target.value.toLowerCase()); setHandleEdited(true); }} placeholder={tab === "people" ? "alex.morgan" : tab === "teams" ? "platform" : "content_editing_form"} /></div></label><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setCreating(false)}>Отмена</button><button className="primary-button" type="submit">Добавить</button></div></form></section></div>}
 
     {editing && <DirectoryEditModal record={editing} people={people} onClose={() => setEditing(null)} onSaved={load} />}
     {addingPerson && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAddingPerson(null); }}><section className="modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="add-team-title"><div className="modal-heading"><div><p className="eyebrow">Membership</p><h2 id="add-team-title">Добавить {addingPerson.displayName}</h2></div><button className="close-button" onClick={() => setAddingPerson(null)} aria-label="Закрыть">×</button></div><form onSubmit={addPersonToTeam}><label>Команда<select required value={selectedTeamId} onChange={(event) => setSelectedTeamId(event.target.value)}><option value="">Выберите команду</option>{teams.filter((team) => team.status === "active" && !team.people.some((person) => person.id === addingPerson.id)).map((team) => <option key={team.id} value={team.id}>{team.name} · @{team.alias}</option>)}</select></label><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setAddingPerson(null)}>Отмена</button><button className="primary-button" type="submit" disabled={!selectedTeamId}>Добавить</button></div></form></section></div>}
