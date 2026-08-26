@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generatePersonAlias, generateProjectSlug, normalizeHandle, validateHandle } from "../app/directory-domain";
+import { defaultProjectColor, generatePersonAlias, generateProjectSlug, isProjectColor, normalizeHandle, projectColorHex, validateHandle } from "../app/directory-domain";
 
 describe("directory handles", () => {
   it("normalizes mention prefixes and case", () => {
@@ -23,5 +23,12 @@ describe("directory handles", () => {
     expect(validateHandle("Алекс", "alias")).toContain("латинских");
     expect(validateHandle("product team", "slug")).toContain("латинских");
     expect(validateHandle("content.editing", "slug")).toContain("_ или -");
+  });
+
+  it("keeps project colors inside the dedicated non-blue/green palette", () => {
+    const color = defaultProjectColor("project-id");
+    expect(isProjectColor(color)).toBe(true);
+    expect(projectColorHex(color)).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(["blue", "green"]).not.toContain(color);
   });
 });

@@ -24,6 +24,7 @@ export const projects = sqliteTable(
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
+    color: text("color", { enum: ["amber", "coral", "purple", "rose", "graphite", "brown"] }).notNull().default("amber"),
     note: text("note").notNull().default(""),
     status: text("status", { enum: ["active", "archived"] })
       .notNull()

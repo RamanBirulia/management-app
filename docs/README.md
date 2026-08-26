@@ -20,7 +20,8 @@
 14. [Release 5.1 — Reviewable Imports & Jira Intake](release-5.1-reviewable-imports.md) — versioned intake, review flow, дедупликация и project skill.
 15. [Release 5.1.1 — Technical Foundation](release-5.1.1-technical-foundation.md) — migrations, integrity, audit, canonical writes и performance boundaries.
 16. [Release 5.2 — Context Export](release-5.2-context-export.md) — versioned plain-text export полной текущей выборки.
-14. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
+17. [Release 5.2.1 — Project Color Coding](release-5.2.1-project-colors.md) — цветовая принадлежность Work Items к проектам.
+18. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
 
 ## Иерархия источников
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { PROJECT_COLORS } from "./directory-domain";
 import type { Person, Project, Team } from "./directory-domain";
 
 type EditableRecord = Person | Project | Team;
@@ -17,7 +18,7 @@ export default function DirectoryEditModal({ record, people = [], onClose, onSav
     const payload = isPerson
       ? { displayName: data.get("name"), alias: data.get("handle"), note: data.get("note") }
       : isTeam ? { name: data.get("name"), alias: data.get("handle"), note: data.get("note"), personIds: data.getAll("personIds") }
-      : { name: data.get("name"), slug: data.get("handle"), note: data.get("note") };
+      : { name: data.get("name"), slug: data.get("handle"), color: data.get("color"), note: data.get("note") };
     try {
       const response = await fetch(`/api/${kind}/${record.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
       const result = await response.json() as { error?: string };
@@ -33,6 +34,7 @@ export default function DirectoryEditModal({ record, people = [], onClose, onSav
     <form onSubmit={save}>
       <label>{isPerson ? "Отображаемое имя" : isTeam ? "Название команды" : "Название проекта"}<input name="name" required defaultValue={isPerson ? record.displayName : record.name} /></label>
       <label>{isPerson || isTeam ? "Alias" : "Slug"}<div className="prefixed-input"><span>{isPerson || isTeam ? "@" : "#"}</span><input name="handle" required pattern={isPerson || isTeam ? "[A-Za-z0-9][A-Za-z0-9._-]{1,39}" : "[A-Za-z0-9][A-Za-z0-9_-]{1,39}"} defaultValue={isPerson || isTeam ? record.alias : record.slug} /></div></label>
+      {!isPerson && !isTeam && <fieldset className="project-color-field"><legend>Цвет проекта</legend><div className="project-color-options">{PROJECT_COLORS.map((color) => <label key={color.value} title={color.label}><input type="radio" name="color" value={color.value} defaultChecked={record.color === color.value} /><span style={{ backgroundColor: color.hex }} /><small>{color.label}</small></label>)}</div><p className="field-hint">Показывается в Planning; палитра не использует цвета людей и команд.</p></fieldset>}
       {isTeam && <label>Участники <span className="field-hint">Можно выбрать несколько</span><select name="personIds" multiple defaultValue={record.people.map((person) => person.id)}>{people.filter((person) => person.status === "active").map((person) => <option key={person.id} value={person.id}>{person.displayName} · @{person.alias}</option>)}</select></label>}
       <label>Note <span className="field-hint">Поддерживает Markdown и ссылки</span><textarea name="note" maxLength={10000} rows={8} defaultValue={record.note} placeholder={isPerson ? "Заметки one-on-one, договорённости, полезные ссылки…" : isTeam ? "Назначение команды, контакты и полезные ссылки…" : "Контекст проекта, ссылки, договорённости…"} /></label>
       <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Отмена</button><button className="primary-button" disabled={saving} type="submit">{saving ? "Сохраняем…" : "Сохранить"}</button></div>

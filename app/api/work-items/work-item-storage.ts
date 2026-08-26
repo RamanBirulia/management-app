@@ -9,14 +9,14 @@ export async function hydrateWorkItems(db: D1Database, rows: WorkItemRow[]): Pro
   if (!rows.length) return [];
   const ids = rows.map((row) => row.id); const placeholders = ids.map(() => "?").join(",");
   const [projects, links] = await Promise.all([
-    db.prepare(`SELECT wip.work_item_id AS workItemId, p.id, p.name, p.slug FROM work_item_projects wip
+    db.prepare(`SELECT wip.work_item_id AS workItemId, p.id, p.name, p.slug, p.color FROM work_item_projects wip
       JOIN projects p ON p.id = wip.project_id WHERE wip.work_item_id IN (${placeholders}) ORDER BY p.name COLLATE NOCASE`).bind(...ids).all<WorkItemProject & { workItemId: string }>(),
     db.prepare(`SELECT work_item_id AS workItemId, id, label, url FROM work_item_links
       WHERE work_item_id IN (${placeholders}) ORDER BY rowid`).bind(...ids).all<{ workItemId: string; id: string; label: string; url: string }>(),
   ]);
   const projectsByItem = groupByWorkItem(projects.results); const linksByItem = groupByWorkItem(links.results);
   return rows.map((row) => ({ ...row,
-    projects: (projectsByItem.get(row.id) ?? []).map(({ id, name, slug }) => ({ id, name, slug })),
+    projects: (projectsByItem.get(row.id) ?? []).map(({ id, name, slug, color }) => ({ id, name, slug, color })),
     links: (linksByItem.get(row.id) ?? []).map(({ id, label, url }) => ({ id, label, url })),
   }));
 }

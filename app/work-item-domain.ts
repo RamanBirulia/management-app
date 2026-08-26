@@ -1,8 +1,9 @@
+import type { ProjectColor } from "./directory-domain";
 import type { LogSource } from "./log-domain";
 
 export type WorkItemStatus = "active" | "done" | "cancelled";
 export type WorkflowStage = "backlog" | "product" | "design" | "pbr" | "engineering";
-export type WorkItemProject = { id: string; name: string; slug: string };
+export type WorkItemProject = { id: string; name: string; slug: string; color: ProjectColor };
 
 export type WorkItem = {
   id: string; title: string; description: string; parentId: string | null;
