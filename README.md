@@ -6,12 +6,11 @@
 
 ## Текущее состояние
 
-**Release 5.1 — Reviewable Imports & Jira Intake завершён.** Приложение поддерживает журнал, восстановление контекста, связанный план работ и подтверждаемый импорт:
+**Release 5.1.1 — Technical Foundation завершён.** Приложение поддерживает журнал, восстановление контекста, связанный план работ и подтверждаемый импорт на укреплённой persistence-основе:
 
-- frontend на React/TypeScript;
-- Node.js/Fastify API с `/health/live`, `/health/ready` и `/api/meta`;
-- PostgreSQL и первая миграция для системных настроек;
-- Docker Compose и Caddy для production-like запуска;
+- Vinext/React/TypeScript frontend и server routes;
+- Cloudflare Worker runtime через Sites;
+- D1/SQLite с versioned Drizzle migrations;
 - проверка типов, lint, unit-тесты и deployment build;
 - опубликованная тестовая версия: https://management-log.raman-birulia.chatgpt.site/.
 - создание, редактирование, архивация и восстановление людей и проектов;
@@ -55,20 +54,21 @@
 - [Отчёт о Release 4.2](docs/release-4.2-teams-membership.md)
 - [Отчёт о Release 5](docs/release-5-work-items.md)
 - [Отчёт о Release 5.1](docs/release-5.1-reviewable-imports.md)
+- [Отчёт о Release 5.1.1](docs/release-5.1.1-technical-foundation.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.
 
 ## Локальная разработка
 
-Требования: Node.js 22.13+, npm и PostgreSQL.
+Требования: Node.js 22.13+ и npm.
 
 ```bash
 npm ci
+npm run db:migrate:local
 npm run dev
-npm run api:dev
 ```
 
-API ожидает `DATABASE_URL`. Переменные окружения перечислены в `.env.example`.
+На существующей локальной базе, созданной до Release 5.1.1, сначала применяются только новые migrations `0009+`; production Sites применяет versioned migrations автоматически при публикации.
 
 ## Проверка
 
@@ -77,9 +77,11 @@ npm run verify
 docker compose config
 ```
 
-## Production-like запуск
+## Legacy production-like scaffold
 
-Скопируйте `.env.example` в `.env`, задайте безопасный пароль базы данных и `APP_HOST`, затем выполните:
+Fastify/PostgreSQL/Docker/Caddy остались от Stage 0 как альтернативный scaffold и не являются runtime опубликованного приложения. До отдельного решения они не развиваются вместе с Sites-веткой.
+
+Для запуска legacy scaffold скопируйте `.env.example` в `.env`, задайте пароль базы данных и `APP_HOST`, затем выполните:
 
 ```bash
 docker compose up --build -d
@@ -87,4 +89,4 @@ docker compose up --build -d
 
 После запуска проверьте `/health/live` и `/health/ready` через публичный домен. PostgreSQL не публикуется наружу; единственной публичной точкой входа остаётся Caddy.
 
-На этапе тестовых данных аутентификация намеренно отключена. До загрузки реальных управленческих данных необходимо ограничить доступ и реализовать согласованный механизм входа.
+Опубликованный Sites runtime закрыт owner-only access policy. Write actions используют platform-authenticated actor headers для audit; локально actor остаётся nullable.

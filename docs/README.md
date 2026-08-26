@@ -18,6 +18,7 @@
 12. [Roadmap Addendum — Context Export](roadmap-addendum-context-export.md) — экспорт текущей выборки в plain text для анализа, принятия решений и планирования.
 13. [Roadmap Addendum — Cross-functional Priority & Sprint Planning](roadmap-addendum-priority-sprint-planning.md) — уточнённая модель Work Items, общего приоритета, стадий и sprint calendar для Release 5–7.
 14. [Release 5.1 — Reviewable Imports & Jira Intake](release-5.1-reviewable-imports.md) — versioned intake, review flow, дедупликация и project skill.
+15. [Release 5.1.1 — Technical Foundation](release-5.1.1-technical-foundation.md) — migrations, integrity, audit, canonical writes и performance boundaries.
 14. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
 
 ## Иерархия источников

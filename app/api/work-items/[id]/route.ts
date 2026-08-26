@@ -2,6 +2,7 @@ import { ensureDirectorySchema, getDirectoryDb } from "../../../../db/directory"
 import type { WorkItemPayload } from "../../../work-item-domain";
 import { encodeRank, validateWorkItemPayload, wouldCreateCycle } from "../../../work-item-domain";
 import { defaultProjectIds, getWorkItem, listWorkItems } from "../work-item-storage";
+import { getRequestActor } from "../../../chatgpt-auth";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params; const payload = await request.json() as WorkItemPayload; const error = validateWorkItemPayload(payload, true);
@@ -23,7 +24,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     for (let index = 0; index < ordered.length; index++) statements.push(db.prepare("UPDATE work_items SET rank = ? WHERE id = ?").bind(`tmp-${crypto.randomUUID()}`, ordered[index].id));
     for (let index = 0; index < ordered.length; index++) statements.push(db.prepare("UPDATE work_items SET rank = ? WHERE id = ?").bind(encodeRank(BigInt(index + 1) * BigInt(1024)), ordered[index].id));
   }
-  statements.push(db.prepare("INSERT INTO work_item_events (id, work_item_id, kind, payload) VALUES (?, ?, 'updated', ?)").bind(crypto.randomUUID(), id, JSON.stringify(payload)));
+  statements.push(db.prepare("INSERT INTO work_item_events (id, work_item_id, kind, payload, actor_id) VALUES (?, ?, 'updated', ?, ?)").bind(crypto.randomUUID(), id, JSON.stringify(payload), getRequestActor(request)));
   await db.batch(statements); return Response.json({ item: await getWorkItem(db, id) });
 }
 

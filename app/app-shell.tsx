@@ -11,10 +11,10 @@ export default function AppShell({ active, eyebrow, title, description, children
         <Link className={`nav-item ${active === "planning" ? "active" : ""}`} href="/planning">Планирование <span>R5</span></Link>
         <Link className={`nav-item ${active === "imports" ? "active" : ""}`} href="/imports">Импорт <span>R5.1</span></Link>
       </nav>
-      <div className="sidebar-note"><span className="pulse" />Release 5.1 · imports</div>
+      <div className="sidebar-note"><span className="pulse" />Release 5.1.1 · foundation</div>
     </aside>
     <section className="content">
-      <header className="topbar"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="lead">{description}</p></div><div className="stage-badge"><span className="status-dot" /> Release 5.1</div></header>
+      <header className="topbar"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="lead">{description}</p></div><div className="stage-badge"><span className="status-dot" /> Release 5.1.1</div></header>
       {children}
     </section>
   </main>;

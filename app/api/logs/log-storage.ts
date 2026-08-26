@@ -2,6 +2,12 @@ import type { LogEntry, LogPerson, LogProject, LogSource, LogTeam } from "../../
 
 type LogRow = Omit<LogEntry, "people" | "projects" | "teams" | "sources">;
 
+function groupBy<T extends { logId: string }>(items: T[]) {
+  const grouped = new Map<string, T[]>();
+  for (const item of items) grouped.set(item.logId, [...(grouped.get(item.logId) ?? []), item]);
+  return grouped;
+}
+
 export async function hydrateLogs(db: D1Database, rows: LogRow[]): Promise<LogEntry[]> {
   if (!rows.length) return [];
   const ids = rows.map((row) => row.id);
@@ -23,12 +29,14 @@ export async function hydrateLogs(db: D1Database, rows: LogRow[]): Promise<LogEn
       WHERE log_id IN (${placeholders}) ORDER BY rowid`).bind(...ids).all<LogSource & { logId: string }>(),
   ]);
 
+  const peopleByLog = groupBy(peopleResult.results); const projectsByLog = groupBy(projectsResult.results);
+  const teamsByLog = groupBy(teamsResult.results); const teamPeopleByLog = groupBy(teamPeopleResult.results); const sourcesByLog = groupBy(sourcesResult.results);
   return rows.map((row) => ({
     ...row,
-    people: peopleResult.results.filter((item) => item.logId === row.id).map((item) => ({ id: item.id, displayName: item.displayName, alias: item.alias })),
-    projects: projectsResult.results.filter((item) => item.logId === row.id).map((item) => ({ id: item.id, name: item.name, slug: item.slug })),
-    teams: teamsResult.results.filter((item) => item.logId === row.id).map((item) => ({ id: item.id, name: item.name, alias: item.alias, people: teamPeopleResult.results.filter((person) => person.logId === row.id && person.teamId === item.id).map((person) => ({ id: person.id, displayName: person.displayName, alias: person.alias })) })),
-    sources: sourcesResult.results.filter((item) => item.logId === row.id).map((item) => ({ id: item.id, label: item.label, url: item.url })),
+    people: (peopleByLog.get(row.id) ?? []).map((item) => ({ id: item.id, displayName: item.displayName, alias: item.alias })),
+    projects: (projectsByLog.get(row.id) ?? []).map((item) => ({ id: item.id, name: item.name, slug: item.slug })),
+    teams: (teamsByLog.get(row.id) ?? []).map((item) => ({ id: item.id, name: item.name, alias: item.alias, people: (teamPeopleByLog.get(row.id) ?? []).filter((person) => person.teamId === item.id).map((person) => ({ id: person.id, displayName: person.displayName, alias: person.alias })) })),
+    sources: (sourcesByLog.get(row.id) ?? []).map((item) => ({ id: item.id, label: item.label, url: item.url })),
   }));
 }
 

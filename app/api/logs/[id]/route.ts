@@ -4,7 +4,9 @@ import { validateLogPayload } from "../../../log-domain";
 import { getLogById } from "../log-storage";
 import { resolveMentionIds } from "../mention-resolution";
 import { resolveCompletionFacts } from "../../../completion-facts";
-import { detachTaskWorkItem, syncTaskWorkItem } from "../../work-items/work-item-storage";
+import { detachTaskWorkItem } from "../../work-items/work-item-storage";
+import { enqueueTaskSync } from "../canonical-log-service";
+import { getRequestActor } from "../../../chatgpt-auth";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params; const payload = (await request.json()) as LogPayload;
@@ -19,8 +21,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const mentionIds = await resolveMentionIds(db, `${payload.content!.trim()}\n${description}`, payload.personIds, payload.projectIds, payload.teamIds);
   const statements = [
     db.prepare(`UPDATE log_entries SET type = ?, content = ?, description = ?, occurred_at = ?, status = ?, assignee_id = ?, due_date = ?,
-      completed_at = ?, completed_by_person_id = ?, resolved_at = ?, resolved_by_person_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-      .bind(type, payload.content!.trim(), description, new Date(payload.occurredAt!).toISOString(), status, type === "task" ? payload.assigneeId ?? null : null, type === "task" ? payload.dueDate ?? null : null, completedAt, completedByPersonId, resolvedAt, resolvedByPersonId, id),
+      completed_at = ?, completed_by_person_id = ?, resolved_at = ?, resolved_by_person_id = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+      .bind(type, payload.content!.trim(), description, new Date(payload.occurredAt!).toISOString(), status, type === "task" ? payload.assigneeId ?? null : null, type === "task" ? payload.dueDate ?? null : null, completedAt, completedByPersonId, resolvedAt, resolvedByPersonId, getRequestActor(request), id),
     db.prepare("DELETE FROM log_people WHERE log_id = ?").bind(id),
     db.prepare("DELETE FROM log_projects WHERE log_id = ?").bind(id),
     db.prepare("DELETE FROM log_teams WHERE log_id = ?").bind(id),
@@ -31,7 +33,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   for (const teamId of mentionIds.teamIds) statements.push(db.prepare("INSERT INTO log_teams (log_id, team_id) VALUES (?, ?)").bind(id, teamId));
   for (const source of payload.sources ?? []) statements.push(db.prepare("INSERT INTO sources (id, log_id, label, url) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), id, source.label.trim(), source.url.trim()));
   await db.batch(statements);
-  if (type === "task") await syncTaskWorkItem(db, id, { title: payload.content!.trim(), description, status, assigneeId: payload.assigneeId ?? null, dueDate: payload.dueDate ?? null, projectIds: mentionIds.projectIds, links: payload.sources ?? [] });
+  if (type === "task") await enqueueTaskSync(db, id);
   else if (current.type === "task") await detachTaskWorkItem(db, id);
   return Response.json({ entry: await getLogById(db, id) });
 }

@@ -13,6 +13,7 @@
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
+    "db:migrate:local": "WRANGLER_LOG_PATH=.wrangler/wrangler.log wrangler d1 migrations apply DB --local --persist-to .wrangler/state --config .openai/wrangler.local.jsonc",
     "api:dev": "tsx watch server/index.ts",
     "api:start": "tsx server/index.ts",
     "api:test": "vitest run server",
