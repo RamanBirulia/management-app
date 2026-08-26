@@ -1,32 +1,25 @@
-PRAGMA foreign_keys=OFF;--> statement-breakpoint
-CREATE TABLE `__new_log_entries` (
-	`id` text PRIMARY KEY NOT NULL,
-	`type` text NOT NULL,
-	`content` text NOT NULL,
-	`description` text DEFAULT '' NOT NULL,
-	`occurred_at` text NOT NULL,
-	`status` text,
-	`assignee_id` text,
-	`due_date` text,
-	`completed_at` text,
-	`completed_by_person_id` text,
-	`resolved_at` text,
-	`resolved_by_person_id` text,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	`created_by` text,
-	`updated_by` text,
-	FOREIGN KEY (`assignee_id`) REFERENCES `people`(`id`) ON UPDATE no action ON DELETE set null,
-	FOREIGN KEY (`completed_by_person_id`) REFERENCES `people`(`id`) ON UPDATE no action ON DELETE set null,
-	FOREIGN KEY (`resolved_by_person_id`) REFERENCES `people`(`id`) ON UPDATE no action ON DELETE set null
-);
---> statement-breakpoint
-INSERT INTO `__new_log_entries`("id", "type", "content", "description", "occurred_at", "status", "assignee_id", "due_date", "completed_at", "completed_by_person_id", "resolved_at", "resolved_by_person_id", "created_at", "updated_at", "created_by", "updated_by") SELECT "id", "type", "content", "description", "occurred_at", "status", "assignee_id", "due_date", "completed_at", "completed_by_person_id", "resolved_at", "resolved_by_person_id", "created_at", "updated_at", "created_by", "updated_by" FROM `log_entries`;--> statement-breakpoint
-DROP TABLE `log_entries`;--> statement-breakpoint
-ALTER TABLE `__new_log_entries` RENAME TO `log_entries`;--> statement-breakpoint
-PRAGMA foreign_keys=ON;--> statement-breakpoint
-CREATE INDEX `idx_log_entries_occurred_at` ON `log_entries` (`occurred_at`,`id`);--> statement-breakpoint
-CREATE INDEX `idx_log_entries_type_occurred_at` ON `log_entries` (`type`,`occurred_at`,`id`);--> statement-breakpoint
-CREATE INDEX `idx_log_entries_status_occurred_at` ON `log_entries` (`status`,`occurred_at`,`id`);--> statement-breakpoint
-CREATE INDEX `idx_log_entries_completed_at` ON `log_entries` (`completed_at`);--> statement-breakpoint
-CREATE INDEX `idx_log_entries_resolved_at` ON `log_entries` (`resolved_at`);
+CREATE TRIGGER `fk_log_entries_insert` BEFORE INSERT ON `log_entries` BEGIN
+  SELECT CASE WHEN NEW.assignee_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM people WHERE id = NEW.assignee_id) THEN RAISE(ABORT, 'log assignee missing') END;
+  SELECT CASE WHEN NEW.completed_by_person_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM people WHERE id = NEW.completed_by_person_id) THEN RAISE(ABORT, 'log completer missing') END;
+  SELECT CASE WHEN NEW.resolved_by_person_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM people WHERE id = NEW.resolved_by_person_id) THEN RAISE(ABORT, 'log resolver missing') END;
+END;--> statement-breakpoint
+CREATE TRIGGER `fk_log_entries_update` BEFORE UPDATE OF assignee_id, completed_by_person_id, resolved_by_person_id ON `log_entries` BEGIN
+  SELECT CASE WHEN NEW.assignee_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM people WHERE id = NEW.assignee_id) THEN RAISE(ABORT, 'log assignee missing') END;
+  SELECT CASE WHEN NEW.completed_by_person_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM people WHERE id = NEW.completed_by_person_id) THEN RAISE(ABORT, 'log completer missing') END;
+  SELECT CASE WHEN NEW.resolved_by_person_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM people WHERE id = NEW.resolved_by_person_id) THEN RAISE(ABORT, 'log resolver missing') END;
+END;--> statement-breakpoint
+CREATE TRIGGER `fk_work_items_insert` BEFORE INSERT ON `work_items` BEGIN
+  SELECT CASE WHEN NEW.parent_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM work_items WHERE id = NEW.parent_id) THEN RAISE(ABORT, 'work item parent missing') END;
+  SELECT CASE WHEN NEW.assignee_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM people WHERE id = NEW.assignee_id) THEN RAISE(ABORT, 'work item assignee missing') END;
+  SELECT CASE WHEN NEW.source_log_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM log_entries WHERE id = NEW.source_log_id) THEN RAISE(ABORT, 'work item source log missing') END;
+END;--> statement-breakpoint
+CREATE TRIGGER `fk_work_items_update` BEFORE UPDATE OF parent_id, assignee_id, source_log_id ON `work_items` BEGIN
+  SELECT CASE WHEN NEW.parent_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM work_items WHERE id = NEW.parent_id) THEN RAISE(ABORT, 'work item parent missing') END;
+  SELECT CASE WHEN NEW.assignee_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM people WHERE id = NEW.assignee_id) THEN RAISE(ABORT, 'work item assignee missing') END;
+  SELECT CASE WHEN NEW.source_log_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM log_entries WHERE id = NEW.source_log_id) THEN RAISE(ABORT, 'work item source log missing') END;
+END;--> statement-breakpoint
+CREATE TRIGGER `fk_import_suggestions_update` BEFORE UPDATE OF batch_id, canonical_log_id ON `import_suggestions` BEGIN
+  SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM import_batches WHERE id = NEW.batch_id) THEN RAISE(ABORT, 'import batch missing') END;
+  SELECT CASE WHEN NEW.canonical_log_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM log_entries WHERE id = NEW.canonical_log_id) THEN RAISE(ABORT, 'canonical log missing') END;
+END;--> statement-breakpoint
+PRAGMA optimize;

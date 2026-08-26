@@ -39,6 +39,7 @@ next-env.d.ts
 *.tsbuildinfo
 /dist/
 /.wrangler/
+/.openai/.wrangler/
 /.sites-runtime/
 /outputs/
 /work/
