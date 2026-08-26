@@ -1,0 +1,17 @@
+import { ensureDirectorySchema, getDirectoryDb } from "../../../db/directory";
+import type { WorkItemPayload } from "../../work-item-domain";
+import { validateWorkItemPayload } from "../../work-item-domain";
+import { createWorkItem, listWorkItems } from "./work-item-storage";
+
+export async function GET(request: Request) {
+  const db = getDirectoryDb(); await ensureDirectorySchema(db); const projectId = new URL(request.url).searchParams.get("project");
+  return Response.json({ items: await listWorkItems(db, projectId) });
+}
+
+export async function POST(request: Request) {
+  const payload = await request.json() as WorkItemPayload; const error = validateWorkItemPayload(payload);
+  if (error) return Response.json({ error }, { status: 400 });
+  const db = getDirectoryDb(); await ensureDirectorySchema(db);
+  if (payload.parentId && !await db.prepare("SELECT id FROM work_items WHERE id = ?").bind(payload.parentId).first()) return Response.json({ error: "Родительская задача не найдена" }, { status: 400 });
+  const item = await createWorkItem(db, { ...payload, title: payload.title! }); return Response.json({ item }, { status: 201 });
+}

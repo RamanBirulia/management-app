@@ -4,6 +4,7 @@ import { validateLogPayload } from "../../../log-domain";
 import { getLogById } from "../log-storage";
 import { resolveMentionIds } from "../mention-resolution";
 import { resolveCompletionFacts } from "../../../completion-facts";
+import { detachTaskWorkItem, syncTaskWorkItem } from "../../work-items/work-item-storage";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params; const payload = (await request.json()) as LogPayload;
@@ -30,11 +31,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   for (const teamId of mentionIds.teamIds) statements.push(db.prepare("INSERT INTO log_teams (log_id, team_id) VALUES (?, ?)").bind(id, teamId));
   for (const source of payload.sources ?? []) statements.push(db.prepare("INSERT INTO sources (id, log_id, label, url) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), id, source.label.trim(), source.url.trim()));
   await db.batch(statements);
+  if (type === "task") await syncTaskWorkItem(db, id, { title: payload.content!.trim(), description, status, assigneeId: payload.assigneeId ?? null, dueDate: payload.dueDate ?? null, projectIds: mentionIds.projectIds, links: payload.sources ?? [] });
+  else if (current.type === "task") await detachTaskWorkItem(db, id);
   return Response.json({ entry: await getLogById(db, id) });
 }
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params; const db = getDirectoryDb(); await ensureDirectorySchema(db);
+  await detachTaskWorkItem(db, id);
   const result = await db.batch([
     db.prepare("DELETE FROM log_people WHERE log_id = ?").bind(id), db.prepare("DELETE FROM log_projects WHERE log_id = ?").bind(id), db.prepare("DELETE FROM log_teams WHERE log_id = ?").bind(id),
     db.prepare("DELETE FROM sources WHERE log_id = ?").bind(id), db.prepare("DELETE FROM log_entries WHERE id = ?").bind(id),

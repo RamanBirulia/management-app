@@ -5,6 +5,7 @@ import { getLogById, hydrateLogs } from "./log-storage";
 import { resolveMentionIds } from "./mention-resolution";
 import { parseLogFilters } from "./log-filters";
 import { resolveCompletionFacts } from "../../completion-facts";
+import { syncTaskWorkItem } from "../work-items/work-item-storage";
 
 export async function GET(request: Request) {
   const db = getDirectoryDb(); await ensureDirectorySchema(db);
@@ -53,5 +54,6 @@ export async function POST(request: Request) {
   for (const teamId of mentionIds.teamIds) statements.push(db.prepare("INSERT INTO log_teams (log_id, team_id) VALUES (?, ?)").bind(id, teamId));
   for (const source of payload.sources ?? []) statements.push(db.prepare("INSERT INTO sources (id, log_id, label, url) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), id, source.label.trim(), source.url.trim()));
   await db.batch(statements);
+  if (type === "task") await syncTaskWorkItem(db, id, { title: content, description, status, assigneeId, dueDate, projectIds: mentionIds.projectIds, links: payload.sources ?? [] });
   return Response.json({ entry: await getLogById(db, id) }, { status: 201 });
 }

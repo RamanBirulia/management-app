@@ -115,6 +115,49 @@ async function initializeSchema(db: D1Database) {
     db.prepare("CREATE INDEX IF NOT EXISTS idx_log_projects_project_id ON log_projects(project_id, log_id)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_log_teams_team_id ON log_teams(team_id, log_id)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_sources_log_id ON sources(log_id)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS work_items (
+      id TEXT PRIMARY KEY NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      parent_id TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      workflow_stage TEXT NOT NULL DEFAULT 'backlog',
+      assignee_id TEXT,
+      due_date TEXT,
+      rank TEXT NOT NULL,
+      source_log_id TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`),
+    db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_work_items_rank_unique ON work_items(rank)"),
+    db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_work_items_source_log_unique ON work_items(source_log_id)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_work_items_parent_id ON work_items(parent_id)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS work_item_projects (
+      work_item_id TEXT NOT NULL,
+      project_id TEXT NOT NULL,
+      PRIMARY KEY (work_item_id, project_id)
+    )`),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_work_item_projects_project_id ON work_item_projects(project_id, work_item_id)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS work_item_links (
+      id TEXT PRIMARY KEY NOT NULL,
+      work_item_id TEXT NOT NULL,
+      label TEXT NOT NULL,
+      url TEXT NOT NULL
+    )`),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_work_item_links_work_item_id ON work_item_links(work_item_id)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS work_item_events (
+      id TEXT PRIMARY KEY NOT NULL,
+      work_item_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      payload TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_work_item_events_work_item_id ON work_item_events(work_item_id, created_at)"),
   ]);
 
   const logColumns = await db.prepare("PRAGMA table_info(log_entries)").all<{ name: string }>();

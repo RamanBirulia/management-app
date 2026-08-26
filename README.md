@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Release 4.2 — Teams & Membership завершён.** Приложение поддерживает ежедневную фиксацию, восстановление, периодический обзор, completion facts и команды:
+**Release 5 — Universal Work Items & Project Tree завершён.** Приложение поддерживает журнал, восстановление контекста и связанный план работ:
 
 - frontend на React/TypeScript;
 - Node.js/Fastify API с `/health/live`, `/health/ready` и `/api/meta`;
@@ -30,8 +30,12 @@
 - команды и many-to-many membership;
 - общий namespace `@` для людей и команд;
 - Team mentions с popover актуального состава.
+- автоматическую связь Task-log → Work Item;
+- дерево задач произвольной глубины;
+- many-to-many проекты, default project и external links;
+- общий стабильный backlog rank.
 
-Следующий продуктовый этап — **Release 5: универсальные Work Items и дерево проекта**. После него запланированы **Release 5.1: Reviewable Imports & Jira Intake** и **Release 5.2: Context Export**. Модель общего приоритета и Sprint planning уточнена отдельным addendum для Release 5–7.
+Следующий продуктовый этап — **Release 5.1: Reviewable Imports & Jira Intake**, затем **Release 5.2: Context Export**. Модель team priority и Sprint planning продолжится в Release 6–7.
 
 ## Документация
 
@@ -49,6 +53,7 @@
 - [Roadmap Addendum: Cross-functional Priority & Sprint Planning](docs/roadmap-addendum-priority-sprint-planning.md)
 - [Отчёт о Release 4.1](docs/release-4.1-completion-facts.md)
 - [Отчёт о Release 4.2](docs/release-4.2-teams-membership.md)
+- [Отчёт о Release 5](docs/release-5-work-items.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.
 

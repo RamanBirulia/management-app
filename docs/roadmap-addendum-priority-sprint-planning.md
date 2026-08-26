@@ -1,6 +1,6 @@
 # Roadmap Addendum — Cross-functional Priority & Sprint Planning
 
-- Статус: **запланирован**
+- Статус: **Release 5 foundation завершён; Release 6–7 запланированы**
 - Затрагивает: **Release 5, Release 6 и Release 7 Product Vision V1**
 - Цель: уточнить существующие этапы, а не добавить изолированную фичу
 
@@ -78,7 +78,7 @@ Planning health — проверяемое состояние, а не общи�
 
 Команда становится естественным scope общего priority list. Один человек может входить в несколько команд, но каждый planning view явно выбран для одной Team.
 
-### Release 5 — Work Items и дерево проекта
+### Release 5 — Work Items и дерево проекта — **завершён**
 
 При проектировании Work Item нужно сразу заложить:
 

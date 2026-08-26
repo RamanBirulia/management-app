@@ -93,3 +93,44 @@ export const sources = sqliteTable("sources", {
   label: text("label").notNull(),
   url: text("url").notNull(),
 }, (table) => [index("idx_sources_log_id").on(table.logId)]);
+
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const workItems = sqliteTable("work_items", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  parentId: text("parent_id"),
+  status: text("status", { enum: ["active", "done", "cancelled"] }).notNull().default("active"),
+  workflowStage: text("workflow_stage", { enum: ["backlog", "product", "design", "pbr", "engineering"] }).notNull().default("backlog"),
+  assigneeId: text("assignee_id"),
+  dueDate: text("due_date"),
+  rank: text("rank").notNull(),
+  sourceLogId: text("source_log_id"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [uniqueIndex("idx_work_items_rank_unique").on(table.rank), uniqueIndex("idx_work_items_source_log_unique").on(table.sourceLogId), index("idx_work_items_parent_id").on(table.parentId)]);
+
+export const workItemProjects = sqliteTable("work_item_projects", {
+  workItemId: text("work_item_id").notNull(),
+  projectId: text("project_id").notNull(),
+}, (table) => [primaryKey({ columns: [table.workItemId, table.projectId] }), index("idx_work_item_projects_project_id").on(table.projectId, table.workItemId)]);
+
+export const workItemLinks = sqliteTable("work_item_links", {
+  id: text("id").primaryKey(),
+  workItemId: text("work_item_id").notNull(),
+  label: text("label").notNull(),
+  url: text("url").notNull(),
+}, (table) => [index("idx_work_item_links_work_item_id").on(table.workItemId)]);
+
+export const workItemEvents = sqliteTable("work_item_events", {
+  id: text("id").primaryKey(),
+  workItemId: text("work_item_id").notNull(),
+  kind: text("kind").notNull(),
+  payload: text("payload").notNull().default("{}"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [index("idx_work_item_events_work_item_id").on(table.workItemId, table.createdAt)]);
