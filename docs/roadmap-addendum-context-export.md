@@ -1,6 +1,6 @@
 # Roadmap Addendum — Context Export
 
-- Статус: **запланирован**
+- Статус: **реализован**
 - Рабочее название: **Release 5.2 — Context Export**
 - Положение в roadmap: после Work Items и Reviewable Imports
 

@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Release 5.1.1 — Technical Foundation завершён.** Приложение поддерживает журнал, восстановление контекста, связанный план работ и подтверждаемый импорт на укреплённой persistence-основе:
+**Release 5.2 — Context Export завершён.** Приложение поддерживает журнал, восстановление контекста, связанный план работ, подтверждаемый импорт и переносимый экспорт текущей выборки:
 
 - Vinext/React/TypeScript frontend и server routes;
 - Cloudflare Worker runtime через Sites;
@@ -34,7 +34,7 @@
 - many-to-many проекты, default project и external links;
 - общий стабильный backlog rank.
 
-Следующий продуктовый этап — **Release 5.2: Context Export**. Модель team priority и Sprint planning продолжится в Release 6–7.
+Следующий продуктовый этап — **Release 6: Planning Scope и team-scoped priority** как основа Sprint planning.
 
 ## Документация
 
@@ -55,6 +55,7 @@
 - [Отчёт о Release 5](docs/release-5-work-items.md)
 - [Отчёт о Release 5.1](docs/release-5.1-reviewable-imports.md)
 - [Отчёт о Release 5.1.1](docs/release-5.1.1-technical-foundation.md)
+- [Отчёт о Release 5.2](docs/release-5.2-context-export.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.
 

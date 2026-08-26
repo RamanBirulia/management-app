@@ -87,6 +87,7 @@ export default function LogsClient({ context, showComposer = true }: { context?:
   const [filterFrom, setFilterFrom] = useState(""); const [filterTo, setFilterTo] = useState("");
   const [completedFrom, setCompletedFrom] = useState(""); const [completedTo, setCompletedTo] = useState("");
   const [journalView, setJournalView] = useState<JournalView>("all"); const [periodDate, setPeriodDate] = useState(currentTallinnDate());
+  const [exportResult, setExportResult] = useState<{ count: number; text: string; filename: string } | null>(null); const [exporting, setExporting] = useState(false); const [exportNotice, setExportNotice] = useState("");
 
   const load = useCallback(async (nextPage = 1, append = false, query = "") => {
     setLoading(true); setError(null);
@@ -135,6 +136,24 @@ export default function LogsClient({ context, showComposer = true }: { context?:
   }
 
   function movePeriod(direction: -1 | 0 | 1) { const base = direction === 0 ? currentTallinnDate() : addCalendarDays(periodDate, direction * (journalView === "weekly" ? 7 : 1)); changeView(journalView, base); }
+
+  async function prepareExport() {
+    setExporting(true); setError(null); setExportNotice("");
+    try { setExportResult(await api<{ count: number; text: string; filename: string }>(`/api/exports/context?${queryForApi(filterQuery)}`)); }
+    catch (exportError) { setError(exportError instanceof Error ? exportError.message : "Не удалось подготовить экспорт"); }
+    finally { setExporting(false); }
+  }
+
+  async function copyExport() {
+    if (!exportResult) return;
+    try { await navigator.clipboard.writeText(exportResult.text); setExportNotice("Текст скопирован"); }
+    catch { setExportNotice("Браузер не разрешил копирование — скачайте файл"); }
+  }
+
+  function downloadExport() {
+    if (!exportResult) return;
+    const url = URL.createObjectURL(new Blob([exportResult.text], { type: "text/plain;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = exportResult.filename; link.click(); URL.revokeObjectURL(url); setExportNotice("Файл скачан");
+  }
 
   const mentionMatch = content.match(/(?:^|\s)([@#])([a-zA-Z0-9._-]*)$/);
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -231,7 +250,7 @@ export default function LogsClient({ context, showComposer = true }: { context?:
       </form>
     </section>}
 
-    <section className="journal-section"><div className="journal-heading"><div><p className="eyebrow">Journal views</p><h2>{journalView === "all" ? "Обратная хронология" : journalView === "daily" ? "День" : "Неделя по проектам"}</h2></div><span className="counter">{entries.length} {journalView === "weekly" ? "уникальных" : "записей"}</span></div>
+    <section className="journal-section"><div className="journal-heading"><div><p className="eyebrow">Journal views</p><h2>{journalView === "all" ? "Обратная хронология" : journalView === "daily" ? "День" : "Неделя по проектам"}</h2></div><div className="journal-actions"><span className="counter">{entries.length} {journalView === "weekly" ? "уникальных" : "записей"}</span><button type="button" className="secondary-button export-button" disabled={exporting || (entries.length === 0 && !hasMore)} onClick={() => void prepareExport()}>{exporting ? "Готовим…" : "Экспорт"}</button></div></div>
       <div className="view-toolbar"><div className="view-tabs" role="tablist" aria-label="Представление журнала">{[["all","All"],["daily","Daily"],["weekly","Weekly"]].map(([value,label]) => <button key={value} role="tab" aria-selected={journalView === value} className={journalView === value ? "active" : ""} onClick={() => changeView(value as JournalView)}>{label}</button>)}</div>{journalView !== "all" && <div className="period-nav"><button aria-label="Предыдущий период" onClick={() => movePeriod(-1)}>‹</button><button className="current-period" onClick={() => movePeriod(0)}>{periodLabel}</button><button aria-label="Следующий период" onClick={() => movePeriod(1)}>›</button></div>}</div>
       <details className="filters-panel"><summary>Фильтры <span>AND между группами · OR внутри группы</span></summary><div className="filters-grid">
         <fieldset><legend>Тип</legend>{[["decision","Decision"],["task","Task"],["question","Question"]].map(([value,label]) => <label key={value}><input type="checkbox" checked={filterTypes.includes(value)} onChange={(event) => setFilterTypes((current) => event.target.checked ? [...current, value] : current.filter((item) => item !== value))} />{label}</label>)}</fieldset>
@@ -245,6 +264,7 @@ export default function LogsClient({ context, showComposer = true }: { context?:
       {loading && entries.length === 0 ? <div className="state-card">Загружаем журнал…</div> : entries.length === 0 ? <div className="state-card"><strong>{filterQuery || context ? "Ничего не найдено" : "Журнал пока пуст"}</strong><p>{filterQuery || context ? "Измените период или условия фильтра." : "Создайте первую Decision, Task или Question — запись останется доступной после перезагрузки."}</p></div> : journalView === "weekly" ? <div className="weekly-groups">{weeklyGroups.map((group) => <section className="weekly-group" key={group.key}><header><div><p className="eyebrow">{group.project ? `#${group.project.slug}` : "Без проекта"}</p><h3>{group.project?.name ?? "Без проекта"}</h3></div><div className="weekly-counts"><span>D {group.counts.decision}</span><span>T {group.counts.task}</span><span>Q {group.counts.question}</span><span>Open {group.counts.open}</span></div></header><div className="log-list">{group.entries.map(renderEntry)}</div></section>)}</div> : journalView === "daily" ? <div className="daily-groups">{dailyGroups.map((group) => <section className="daily-group" key={group.date}><h3>{dayTitle(group.date)}</h3><div className="log-list">{group.entries.map(renderEntry)}</div></section>)}</div> : <div className="log-list">{entries.map(renderEntry)}</div>}
       {hasMore && <button className="load-more" disabled={loading} onClick={() => { const nextPage = page + 1; const params = new URLSearchParams(filterQuery); params.set("page", String(nextPage)); window.history.replaceState(null, "", `${window.location.pathname}?${params}`); void load(nextPage, true, filterQuery); }}>{loading ? "Загружаем…" : "Показать ещё"}</button>}
     </section>
+    {exportResult && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setExportResult(null); }}><section className="modal export-modal" role="dialog" aria-modal="true" aria-labelledby="export-title"><div className="modal-heading"><div><p className="eyebrow">Context Export</p><h2 id="export-title">Экспортировать {exportResult.count} записей</h2></div><button type="button" className="icon-button" aria-label="Закрыть" onClick={() => setExportResult(null)}>×</button></div><p className="export-help">В экспорт войдёт вся текущая выборка, включая записи, которые ещё не были загружены на экран.</p><textarea className="export-preview" readOnly value={exportResult.text} aria-label="Предпросмотр экспорта" />{exportNotice && <p className="export-notice" role="status">{exportNotice}</p>}<div className="modal-actions"><button type="button" className="secondary-button" onClick={() => void copyExport()}>Скопировать как текст</button><button type="button" className="primary-button" onClick={downloadExport}>Скачать .txt</button></div></section></div>}
     {editingRecord && <DirectoryEditModal record={editingRecord} people={people} onClose={() => setEditingRecord(null)} onSaved={() => load(1, false, filterQuery)} />}
   </>;
 }
