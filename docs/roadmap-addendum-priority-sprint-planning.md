@@ -1,6 +1,6 @@
 # Roadmap Addendum — Cross-functional Priority & Sprint Planning
 
-- Статус: **Release 5 foundation завершён; Release 6–7 запланированы**
+- Статус: **Release 6 завершён; Release 7 запланирован**
 - Затрагивает: **Release 5, Release 6 и Release 7 Product Vision V1**
 - Цель: уточнить существующие этапы, а не добавить изолированную фичу
 

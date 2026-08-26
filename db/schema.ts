@@ -104,6 +104,18 @@ export const appSettings = sqliteTable("app_settings", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const planningScopes = sqliteTable("planning_scopes", {
+  id: text("id").primaryKey(),
+  teamId: text("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [uniqueIndex("idx_planning_scopes_team_unique").on(table.teamId)]);
+
+export const planningScopeProjects = sqliteTable("planning_scope_projects", {
+  scopeId: text("scope_id").notNull().references(() => planningScopes.id, { onDelete: "cascade" }),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+}, (table) => [primaryKey({ columns: [table.scopeId, table.projectId] }), index("idx_planning_scope_projects_project").on(table.projectId, table.scopeId)]);
+
 export const workItems = sqliteTable("work_items", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
@@ -113,6 +125,10 @@ export const workItems = sqliteTable("work_items", {
   workflowStage: text("workflow_stage", { enum: ["backlog", "product", "design", "pbr", "engineering"] }).notNull().default("backlog"),
   assigneeId: text("assignee_id").references(() => people.id, { onDelete: "set null" }),
   dueDate: text("due_date"),
+  designOwnerId: text("design_owner_id").references(() => people.id, { onDelete: "set null" }),
+  designDraftUrl: text("design_draft_url"),
+  designTargetDate: text("design_target_date"),
+  readinessNote: text("readiness_note").notNull().default(""),
   rank: text("rank").notNull(),
   sourceLogId: text("source_log_id").references(() => logEntries.id, { onDelete: "set null" }),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),

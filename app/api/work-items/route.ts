@@ -6,8 +6,8 @@ import { getRequestActor } from "../../chatgpt-auth";
 import { retryTaskSync } from "../logs/canonical-log-service";
 
 export async function GET(request: Request) {
-  const db = getDirectoryDb(); await ensureDirectorySchema(db); await retryTaskSync(db); const projectId = new URL(request.url).searchParams.get("project");
-  return Response.json({ items: await listWorkItems(db, projectId) });
+  const db = getDirectoryDb(); await ensureDirectorySchema(db); await retryTaskSync(db); const params = new URL(request.url).searchParams;
+  return Response.json({ items: await listWorkItems(db, params.get("project"), params.get("team")) });
 }
 
 export async function POST(request: Request) {

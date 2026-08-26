@@ -21,7 +21,8 @@
 15. [Release 5.1.1 — Technical Foundation](release-5.1.1-technical-foundation.md) — migrations, integrity, audit, canonical writes и performance boundaries.
 16. [Release 5.2 — Context Export](release-5.2-context-export.md) — versioned plain-text export полной текущей выборки.
 17. [Release 5.2.1 — Project Color Coding](release-5.2.1-project-colors.md) — цветовая принадлежность Work Items к проектам.
-18. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
+18. [Release 6 — Planning Scope & Team Priority](release-6-planning-scope.md) — командный scope, строгий priority list, readiness и planning health.
+19. [ADR-001: D1 для Sites runtime](decisions/001-sites-d1-runtime.md) — решение о серверной базе для опубликованной версии.
 
 ## Иерархия источников
 

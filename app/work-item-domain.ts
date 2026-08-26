@@ -8,11 +8,12 @@ export type WorkItemProject = { id: string; name: string; slug: string; color: P
 export type WorkItem = {
   id: string; title: string; description: string; parentId: string | null;
   status: WorkItemStatus; workflowStage: WorkflowStage; assigneeId: string | null;
-  dueDate: string | null; rank: string; sourceLogId: string | null;
+  dueDate: string | null; designOwnerId: string | null; designDraftUrl: string | null; designTargetDate: string | null; readinessNote: string;
+  rank: string; sourceLogId: string | null;
   createdAt: string; updatedAt: string; projects: WorkItemProject[]; links: LogSource[];
 };
 
-export type WorkItemPayload = Partial<Pick<WorkItem, "title" | "description" | "parentId" | "status" | "workflowStage" | "assigneeId" | "dueDate">> & {
+export type WorkItemPayload = Partial<Pick<WorkItem, "title" | "description" | "parentId" | "status" | "workflowStage" | "assigneeId" | "dueDate" | "designOwnerId" | "designDraftUrl" | "designTargetDate" | "readinessNote">> & {
   projectIds?: string[]; links?: LogSource[]; beforeId?: string | null;
 };
 
@@ -24,6 +25,8 @@ export function validateWorkItemPayload(payload: WorkItemPayload, partial = fals
   if ((payload.description ?? "").length > 20_000) return "Описание не должно превышать 20 000 символов";
   if (payload.status && !["active", "done", "cancelled"].includes(payload.status)) return "Некорректный lifecycle status";
   if (payload.workflowStage && !["backlog", "product", "design", "pbr", "engineering"].includes(payload.workflowStage)) return "Некорректная стадия";
+  if ((payload.readinessNote ?? "").length > 10_000) return "Readiness note не должен превышать 10 000 символов";
+  if (payload.designDraftUrl) { try { const url = new URL(payload.designDraftUrl); if (!/^https?:$/.test(url.protocol)) return "Design draft должен использовать http или https"; } catch { return "Укажите корректный URL design draft"; } }
   for (const link of payload.links ?? []) {
     if (!link.label.trim()) return "Укажите название ссылки";
     try { const url = new URL(link.url); if (!/^https?:$/.test(url.protocol)) return "Ссылка должна использовать http или https"; }

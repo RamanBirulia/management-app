@@ -21,18 +21,23 @@ export async function hydrateWorkItems(db: D1Database, rows: WorkItemRow[]): Pro
   }));
 }
 
-export async function listWorkItems(db: D1Database, projectId?: string | null) {
-  const condition = projectId ? "WHERE EXISTS (SELECT 1 FROM work_item_projects wip WHERE wip.work_item_id = wi.id AND wip.project_id = ?)" : "";
+export async function listWorkItems(db: D1Database, projectId?: string | null, teamId?: string | null) {
+  const values: string[] = []; const conditions: string[] = [];
+  if (projectId) { conditions.push("EXISTS (SELECT 1 FROM work_item_projects wip WHERE wip.work_item_id = wi.id AND wip.project_id = ?)"); values.push(projectId); }
+  if (teamId) { conditions.push("EXISTS (SELECT 1 FROM work_item_projects wip JOIN planning_scope_projects psp ON psp.project_id = wip.project_id JOIN planning_scopes ps ON ps.id = psp.scope_id WHERE wip.work_item_id = wi.id AND ps.team_id = ?)"); values.push(teamId); }
+  const condition = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const statement = db.prepare(`SELECT id, title, description, parent_id AS parentId, status, workflow_stage AS workflowStage,
-    assignee_id AS assigneeId, due_date AS dueDate, rank, source_log_id AS sourceLogId, created_at AS createdAt, updated_at AS updatedAt
+    assignee_id AS assigneeId, due_date AS dueDate, design_owner_id AS designOwnerId, design_draft_url AS designDraftUrl,
+    design_target_date AS designTargetDate, readiness_note AS readinessNote, rank, source_log_id AS sourceLogId, created_at AS createdAt, updated_at AS updatedAt
     FROM work_items wi ${condition} ORDER BY rank ASC`);
-  const result = projectId ? await statement.bind(projectId).all<WorkItemRow>() : await statement.all<WorkItemRow>();
+  const result = values.length ? await statement.bind(...values).all<WorkItemRow>() : await statement.all<WorkItemRow>();
   return hydrateWorkItems(db, result.results);
 }
 
 export async function getWorkItem(db: D1Database, id: string) {
   const result = await db.prepare(`SELECT id, title, description, parent_id AS parentId, status, workflow_stage AS workflowStage,
-    assignee_id AS assigneeId, due_date AS dueDate, rank, source_log_id AS sourceLogId, created_at AS createdAt, updated_at AS updatedAt
+    assignee_id AS assigneeId, due_date AS dueDate, design_owner_id AS designOwnerId, design_draft_url AS designDraftUrl,
+    design_target_date AS designTargetDate, readiness_note AS readinessNote, rank, source_log_id AS sourceLogId, created_at AS createdAt, updated_at AS updatedAt
     FROM work_items WHERE id = ?`).bind(id).first<WorkItemRow>();
   if (!result) return null; const [item] = await hydrateWorkItems(db, [result]); return item;
 }
@@ -58,9 +63,10 @@ export async function nextWorkItemRank(db: D1Database) {
 export async function createWorkItem(db: D1Database, payload: Required<Pick<WorkItemPayload, "title">> & WorkItemPayload & { sourceLogId?: string | null; actorId?: string | null }) {
   const id = crypto.randomUUID(); const projectIds = await defaultProjectIds(db, payload.projectIds); const rank = await nextWorkItemRank(db);
   const statements = [db.prepare(`INSERT INTO work_items
-    (id, title, description, parent_id, status, workflow_stage, assignee_id, due_date, rank, source_log_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, payload.title.trim(), payload.description?.trim() ?? "", payload.parentId ?? null,
-      payload.status ?? "active", payload.workflowStage ?? "backlog", payload.assigneeId ?? null, payload.dueDate ?? null, rank, payload.sourceLogId ?? null)];
+    (id, title, description, parent_id, status, workflow_stage, assignee_id, due_date, design_owner_id, design_draft_url, design_target_date, readiness_note, rank, source_log_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, payload.title.trim(), payload.description?.trim() ?? "", payload.parentId ?? null,
+      payload.status ?? "active", payload.workflowStage ?? "backlog", payload.assigneeId ?? null, payload.dueDate ?? null, payload.designOwnerId ?? null,
+      payload.designDraftUrl?.trim() || null, payload.designTargetDate ?? null, payload.readinessNote?.trim() ?? "", rank, payload.sourceLogId ?? null)];
   for (const projectId of projectIds) statements.push(db.prepare("INSERT INTO work_item_projects (work_item_id, project_id) VALUES (?, ?)").bind(id, projectId));
   for (const link of payload.links ?? []) statements.push(db.prepare("INSERT INTO work_item_links (id, work_item_id, label, url) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), id, link.label.trim(), link.url.trim()));
   statements.push(db.prepare("INSERT INTO work_item_events (id, work_item_id, kind, payload, actor_id) VALUES (?, ?, 'created', ?, ?)").bind(crypto.randomUUID(), id, JSON.stringify({ projectIds }), payload.actorId ?? null));
