@@ -1,6 +1,6 @@
 # Roadmap Addendum — Reviewable Imports & Jira Intake
 
-- Статус: **запланирован**
+- Статус: **Release 5.1 завершён**
 - Рабочее название: **Release 5.1 — Reviewable Imports & Jira Intake**
 - Положение в roadmap: после Release 5 (Work Items), до следующих этапов планирования
 

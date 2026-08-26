@@ -158,6 +158,31 @@ async function initializeSchema(db: D1Database) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_work_item_events_work_item_id ON work_item_events(work_item_id, created_at)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS import_batches (
+      id TEXT PRIMARY KEY NOT NULL,
+      format_version TEXT NOT NULL DEFAULT '1',
+      source_system TEXT NOT NULL DEFAULT 'manual',
+      title TEXT NOT NULL DEFAULT 'Import',
+      idempotency_key TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`),
+    db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_import_batches_idempotency_unique ON import_batches(idempotency_key)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS import_suggestions (
+      id TEXT PRIMARY KEY NOT NULL,
+      batch_id TEXT NOT NULL,
+      type TEXT NOT NULL CHECK (type IN ('decision', 'task', 'question')),
+      content TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      occurred_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+      external_key TEXT,
+      external_url TEXT,
+      canonical_log_id TEXT,
+      reviewed_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_import_suggestions_batch_id ON import_suggestions(batch_id, created_at)"),
+    db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_import_suggestions_external_unique ON import_suggestions(external_key) WHERE external_key IS NOT NULL"),
   ]);
 
   const logColumns = await db.prepare("PRAGMA table_info(log_entries)").all<{ name: string }>();

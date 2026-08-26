@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Release 5 — Universal Work Items & Project Tree завершён.** Приложение поддерживает журнал, восстановление контекста и связанный план работ:
+**Release 5.1 — Reviewable Imports & Jira Intake завершён.** Приложение поддерживает журнал, восстановление контекста, связанный план работ и подтверждаемый импорт:
 
 - frontend на React/TypeScript;
 - Node.js/Fastify API с `/health/live`, `/health/ready` и `/api/meta`;
@@ -35,7 +35,7 @@
 - many-to-many проекты, default project и external links;
 - общий стабильный backlog rank.
 
-Следующий продуктовый этап — **Release 5.1: Reviewable Imports & Jira Intake**, затем **Release 5.2: Context Export**. Модель team priority и Sprint planning продолжится в Release 6–7.
+Следующий продуктовый этап — **Release 5.2: Context Export**. Модель team priority и Sprint planning продолжится в Release 6–7.
 
 ## Документация
 
@@ -54,6 +54,7 @@
 - [Отчёт о Release 4.1](docs/release-4.1-completion-facts.md)
 - [Отчёт о Release 4.2](docs/release-4.2-teams-membership.md)
 - [Отчёт о Release 5](docs/release-5-work-items.md)
+- [Отчёт о Release 5.1](docs/release-5.1-reviewable-imports.md)
 
 Product Vision является основным источником продуктовых требований. Отчёт Stage 0 фиксирует фактически реализованный baseline и известные ограничения.
 

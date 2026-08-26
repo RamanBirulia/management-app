@@ -134,3 +134,27 @@ export const workItemEvents = sqliteTable("work_item_events", {
   payload: text("payload").notNull().default("{}"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [index("idx_work_item_events_work_item_id").on(table.workItemId, table.createdAt)]);
+
+export const importBatches = sqliteTable("import_batches", {
+  id: text("id").primaryKey(),
+  formatVersion: text("format_version").notNull().default("1"),
+  sourceSystem: text("source_system").notNull().default("manual"),
+  title: text("title").notNull().default("Import"),
+  idempotencyKey: text("idempotency_key").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [uniqueIndex("idx_import_batches_idempotency_unique").on(table.idempotencyKey)]);
+
+export const importSuggestions = sqliteTable("import_suggestions", {
+  id: text("id").primaryKey(),
+  batchId: text("batch_id").notNull(),
+  type: text("type", { enum: ["decision", "task", "question"] }).notNull(),
+  content: text("content").notNull(),
+  description: text("description").notNull().default(""),
+  occurredAt: text("occurred_at").notNull(),
+  status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  externalKey: text("external_key"),
+  externalUrl: text("external_url"),
+  canonicalLogId: text("canonical_log_id"),
+  reviewedAt: text("reviewed_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [index("idx_import_suggestions_batch_id").on(table.batchId, table.createdAt), uniqueIndex("idx_import_suggestions_external_unique").on(table.externalKey)]);

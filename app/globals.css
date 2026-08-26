@@ -204,3 +204,16 @@ select:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(42,123,114,.1
 .work-item-modal select[multiple],.form-panel select[multiple] { min-height:92px; }
 @media(max-width:980px){.planning-layout{grid-template-columns:1fr}.planning-layout .form-panel{position:static;order:-1}}
 @media(max-width:780px){.planning-toolbar{align-items:stretch;flex-direction:column}.planning-toolbar .view-tabs{margin-right:0}.planning-toolbar label{min-width:0}.work-item-card{grid-template-columns:auto minmax(0,1fr) auto}.floating-add{right:16px;bottom:16px;width:48px;height:48px}}
+
+.import-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:30px 0 16px; }
+.import-list { display:flex; flex-direction:column; gap:10px; }
+.import-suggestion { position:relative; padding:16px 18px; border:1px dashed #c5d1d6; border-left:3px solid #8d9aa1; background:#fff; }
+.import-suggestion.decision { border-left-color:#2a7b72; }.import-suggestion.task { border-left-color:#b37a3d; }.import-suggestion.question { border-left-color:#6c6eb1; }
+.import-suggestion.approved,.import-suggestion.rejected { opacity:.62; border-style:solid; }
+.suggestion-meta { display:flex; flex-wrap:wrap; gap:8px 15px; color:#819099; font:10px ui-monospace,monospace; text-transform:uppercase; }
+.import-suggestion h3 { margin:8px 0 4px; color:#2b3f49; font-size:14px; }.import-suggestion p { margin:5px 0; color:#60717a; font-size:12px; line-height:1.5; }
+.import-suggestion code { display:inline-block; margin-top:6px; color:#637780; font-size:10px; }.import-suggestion a { margin-left:10px; color:var(--teal); font-size:10px; text-decoration:none; }
+.review-actions { display:flex; justify-content:flex-end; gap:7px; margin-top:12px; padding-top:10px; border-top:1px solid #edf0f1; }
+.review-actions button { padding:8px 12px; border-radius:3px; font-size:11px; font-weight:750; cursor:pointer; }.reject-button { border:1px solid #d7c5c3; background:white; color:#97524c; }.approve-button { border:0; background:#2a7b72; color:white; }
+.import-modal { width:min(650px,100%); max-height:90vh; overflow:auto; }
+@media(max-width:780px){.import-toolbar{align-items:flex-start;flex-direction:column}.import-toolbar .view-tabs{width:100%}.import-toolbar .view-tabs button{flex:1}}
